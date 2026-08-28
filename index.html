@@ -99,8 +99,8 @@
             <input type="text" id="twitchUser" placeholder="مثال: elonksa">
         </div>
         <div class="input-group">
-            <label for="kickUser">اسم قناة Kick:</label>
-            <input type="text" id="kickUser" placeholder="مثال: Kaysan">
+            <label for="kickUser">اسم القناة أو Chatroom ID في Kick:</label>
+            <input type="text" id="kickUser" placeholder="مثال: Kaysan أو رقم الـ ID">
         </div>
         <button onclick="connectAll()">اتصال بالشات 🚀</button>
     </div>
@@ -179,11 +179,11 @@
 
     // --- Kick Connection ---
     async function connectKick() {
-        const channelName = document.getElementById('kickUser').value.trim().toLowerCase();
-        if (!channelName) return;
+        const inputVal = document.getElementById('kickUser').value.trim();
+        if (!inputVal) return;
 
         const status = document.getElementById('kickStatus');
-        status.textContent = 'Kick: جاري جلب البيانات...';
+        status.textContent = 'Kick: جاري الاتصال...';
 
         if (pusherClient) {
             pusherClient.disconnect();
@@ -191,27 +191,32 @@
 
         let chatroomId = null;
 
-        try {
-            const workerUrl = `https://misty-hall-2fca.sulai-seller.workers.dev/?name=${channelName}`;
-            const response = await fetch(workerUrl);
-            if (response.ok) {
-                const data = await response.json();
-                if (data && data.chatroomId) {
-                    chatroomId = data.chatroomId;
+        // إذا أدخل المستخدم أرقاماً فقط (Chatroom ID مباشر)
+        if (/^\d+$/.test(inputVal)) {
+            chatroomId = inputVal;
+        } else {
+            // الاستعلام عبر الـ Worker إذا كان اسم قناة
+            try {
+                const workerUrl = `https://misty-hall-2fca.sulai-seller.workers.dev/?name=${inputVal.toLowerCase()}`;
+                const response = await fetch(workerUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.chatroomId && data.chatroomId !== "1") {
+                        chatroomId = data.chatroomId;
+                    }
                 }
+            } catch (e) {
+                console.error("خطأ الـ Worker:", e);
             }
-        } catch (e) {
-            console.error("خطأ في الاتصال بالـ Worker:", e);
         }
 
         if (!chatroomId) {
-            status.textContent = 'Kick: تعذر العثور على اسم القناة';
+            status.textContent = 'Kick: تعذر جلب ID القناة تلقائياً';
             status.classList.remove('connected');
             return;
         }
 
-        status.textContent = 'Kick: جاري الاتصال...';
-
+        // الاتصال بـ Pusher Kick
         pusherClient = new Pusher('eb1d5f283082ab080b96', {
             cluster: 'us2',
             forceTLS: true
@@ -220,7 +225,7 @@
         const channel = pusherClient.subscribe(`chatrooms.${chatroomId}.v2`);
 
         pusherClient.connection.bind('connected', () => {
-            status.textContent = `Kick: متصل (${channelName})`;
+            status.textContent = `Kick: متصل (ID: ${chatroomId})`;
             status.classList.add('connected');
         });
 
