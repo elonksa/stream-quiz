@@ -34,11 +34,7 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #38bdf8;
-        }
+        h1 { text-align: center; margin-bottom: 20px; color: #38bdf8; }
 
         .connection-panel {
             display: grid;
@@ -50,113 +46,42 @@
             border-radius: 12px;
         }
 
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        label {
-            font-size: 0.9em;
-            font-weight: bold;
-        }
-
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.9em; font-weight: bold; }
         input {
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #334155;
-            background: #1e293b;
-            color: #fff;
-            outline: none;
+            padding: 10px; border-radius: 6px; border: 1px solid #334155;
+            background: #1e293b; color: #fff; outline: none;
         }
 
         button {
-            grid-column: span 2;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            background: #0284c7;
-            color: white;
-            font-weight: bold;
-            font-size: 1em;
-            cursor: pointer;
-            transition: 0.2s;
+            grid-column: span 2; padding: 12px; border: none; border-radius: 8px;
+            background: #0284c7; color: white; font-weight: bold; font-size: 1em;
+            cursor: pointer; transition: 0.2s;
         }
+        button:hover { background: #0369a1; }
 
-        button:hover {
-            background: #0369a1;
-        }
-
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            font-size: 0.85em;
-        }
-
-        .status-indicator {
-            padding: 6px 12px;
-            border-radius: 20px;
-            background: #334155;
-        }
-
-        .status-indicator.connected {
-            background: #15803d;
-            color: white;
-        }
+        .status-bar { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 0.85em; }
+        .status-indicator { padding: 6px 12px; border-radius: 20px; background: #334155; }
+        .status-indicator.connected { background: #15803d; color: white; }
 
         .quiz-card {
-            background: #0f172a;
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid #334155;
-            text-align: center;
+            background: #0f172a; padding: 20px; border-radius: 12px;
+            border: 2px solid #334155; text-align: center;
         }
 
-        .question {
-            font-size: 1.4em;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-
-        .options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
+        .question { font-size: 1.4em; font-weight: bold; margin-bottom: 15px; }
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .option-btn {
-            background: #1e293b;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #475569;
-            font-size: 1em;
-            text-align: right;
+            background: #1e293b; padding: 12px; border-radius: 8px;
+            border: 1px solid #475569; font-size: 1em; text-align: right;
         }
 
-        .scores {
-            margin-top: 25px;
-        }
-
-        .scores h3 {
-            border-bottom: 2px solid #334155;
-            padding-bottom: 5px;
-        }
-
-        .score-list {
-            list-style: none;
-            padding: 0;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
+        .scores { margin-top: 25px; }
+        .scores h3 { border-bottom: 2px solid #334155; padding-bottom: 5px; }
+        .score-list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
         .score-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 12px;
-            background: #1e293b;
-            margin-bottom: 5px;
-            border-radius: 6px;
+            display: flex; justify-content: space-between; padding: 8px 12px;
+            background: #1e293b; margin-bottom: 5px; border-radius: 6px;
         }
 
         .badge-twitch { color: var(--accent-twitch); font-weight: bold; }
@@ -252,7 +177,7 @@
         };
     }
 
-    // --- Kick Connection (باستخدام Cloudflare Worker الخاص بك) ---
+    // --- Kick Connection ---
     async function connectKick() {
         const channelName = document.getElementById('kickUser').value.trim().toLowerCase();
         if (!channelName) return;
@@ -267,14 +192,12 @@
         let chatroomId = null;
 
         try {
-            // الاستعلام المباشر عبر الـ Worker السريع
             const workerUrl = `https://misty-hall-2fca.sulai-seller.workers.dev/?name=${channelName}`;
             const response = await fetch(workerUrl);
-            
             if (response.ok) {
                 const data = await response.json();
-                if (data && data.chatroom && data.chatroom.id) {
-                    chatroomId = data.chatroom.id;
+                if (data && data.chatroomId) {
+                    chatroomId = data.chatroomId;
                 }
             }
         } catch (e) {
@@ -289,7 +212,6 @@
 
         status.textContent = 'Kick: جاري الاتصال...';
 
-        // الاتصال المباشر بـ Kick عبر Pusher
         pusherClient = new Pusher('eb1d5f283082ab080b96', {
             cluster: 'us2',
             forceTLS: true
