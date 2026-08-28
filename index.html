@@ -99,7 +99,7 @@
             <input type="text" id="twitchUser" placeholder="مثال: elonksa">
         </div>
         <div class="input-group">
-            <label for="kickUser">معرف شات Kick (Chatroom ID أو اسم القناة):</label>
+            <label for="kickUser">اسم قناة Kick:</label>
             <input type="text" id="kickUser" value="xsulai" placeholder="xsulai">
         </div>
         <button onclick="connectAll()">اتصال بالشات 🚀</button>
@@ -172,9 +172,9 @@
         };
     }
 
-    // --- Kick Connection المباشر بدون Worker ---
+    // --- Kick Connection ---
     async function connectKick() {
-        const inputVal = document.getElementById('kickUser').value.trim();
+        const inputVal = document.getElementById('kickUser').value.trim().toLowerCase();
         if (!inputVal) return;
 
         const status = document.getElementById('kickStatus');
@@ -182,24 +182,26 @@
 
         if (pusherClient) pusherClient.disconnect();
 
-        let chatroomId = inputVal;
+        let chatroomId = null;
 
-        // إذا كان المدخل هو اسم قناة (وليس رقم ID)، نقوم بجلبه مباشرة من API كيك العام للبث المباشر
-        if (isNaN(inputVal)) {
-            try {
-                const res = await fetch(`https://kick.com/api/v2/channels/${inputVal.toLowerCase()}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.chatroom && data.chatroom.id) {
-                        chatroomId = data.chatroom.id;
-                    }
+        try {
+            const res = await fetch(`https://kick.com/api/v2/channels/${inputVal}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.chatroom && data.chatroom.id) {
+                    chatroomId = data.chatroom.id;
                 }
-            } catch (err) {
-                console.log("استعلام مباشر...");
             }
+        } catch (err) {
+            console.log("خطأ في جلب المعرف");
         }
 
-        // الاتصال بمقبس Pusher لـ Kick مباشرة
+        if (!chatroomId) {
+            status.textContent = 'Kick: خطأ بالاتصال';
+            status.classList.remove('connected');
+            return;
+        }
+
         pusherClient = new Pusher('eb1d5f283082ab080b96', {
             cluster: 'us2',
             forceTLS: true
