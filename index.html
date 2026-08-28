@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stream Quiz Game - Twitch</title>
+    <title>Stream Quiz Game - Twitch (أجوبة كتابية)</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -25,7 +25,7 @@
 
         .container {
             width: 100%;
-            max-width: 800px;
+            max-width: 850px;
             background: var(--card-bg);
             padding: 25px;
             border-radius: 16px;
@@ -46,14 +46,14 @@
 
         .input-group { display: flex; flex-direction: column; gap: 5px; }
         label { font-size: 0.9em; font-weight: bold; }
-        input {
+        input, select {
             padding: 10px; border-radius: 6px; border: 1px solid #334155;
             background: #1e293b; color: #fff; outline: none;
         }
 
         button {
             padding: 12px; border: none; border-radius: 8px;
-            background: #9146ff; color: white; font-weight: bold; font-size: 1em;
+            background: var(--accent-twitch); color: white; font-weight: bold; font-size: 1em;
             cursor: pointer; transition: 0.2s;
         }
         button:hover { background: #772ce8; }
@@ -67,12 +67,12 @@
             border: 2px solid #334155; text-align: center;
         }
 
-        .question { font-size: 1.4em; font-weight: bold; margin-bottom: 15px; }
-        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .option-btn {
-            background: #1e293b; padding: 12px; border-radius: 8px;
-            border: 1px solid #475569; font-size: 1em; text-align: right;
-        }
+        .meta-info { display: flex; justify-content: space-between; font-size: 0.85em; color: #94a3b8; margin-bottom: 10px; }
+        .question { font-size: 1.4em; font-weight: bold; margin-bottom: 15px; line-height: 1.5; }
+        
+        .controls-row { display: flex; gap: 10px; margin-top: 15px; }
+        .controls-row button { flex: 1; background: #0284c7; }
+        .controls-row button:hover { background: #0369a1; }
 
         .scores { margin-top: 25px; }
         .scores h3 { border-bottom: 2px solid #334155; padding-bottom: 5px; }
@@ -87,7 +87,7 @@
 <body>
 
 <div class="container">
-    <h1>🎮 مسابقة البث المباشر (Twitch)</h1>
+    <h1>🎮 مسابقة البث المباشر (أجوبة كتابية شاملة)</h1>
 
     <div class="connection-panel">
         <div class="input-group">
@@ -102,12 +102,15 @@
     </div>
 
     <div class="quiz-card">
-        <div class="question" id="questionText">أرسل (A) أو (B) أو (C) أو (D) في الشات لاحتساب النقاط!</div>
-        <div class="options" id="optionsContainer">
-            <div class="option-btn">A) الخيار الأول</div>
-            <div class="option-btn">B) الخيار الثاني</div>
-            <div class="option-btn">C) الخيار الثالث</div>
-            <div class="option-btn">D) الخيار الرابع</div>
+        <div class="meta-info">
+            <span id="questionCategory">المجال: عام</span>
+            <span id="questionDifficulty">الصعوبة: متوسط</span>
+        </div>
+        <div class="question" id="questionText">اضغط على زر "السؤال التالي" لبدء المسابقة واستقبال إجابات الشات الكتابية!</div>
+        
+        <div class="controls-row">
+            <button onclick="nextQuestion()">السؤال التالي ➡️</button>
+            <button onclick="showAnswer()" style="background: #16a34a;">إظهار الإجابة الصحيحة 💡</button>
         </div>
     </div>
 
@@ -119,12 +122,36 @@
 
 <script>
     let twitchWS = null;
-    let currentAnswer = "A"; 
     let scores = {};
+    let currentQuestionObj = null;
+
+    // بنك الأسئلة الشامل (مختلف المجالات ومستويات الصعوبة)
+    const questionsBank = [
+        // سهلة
+        { q: "ما هي عاصمة المملكة العربية السعودية؟", a: "الرياض", category: "جغرافيا", diff: "سهل" },
+        { q: "كم عدد سور القرآن الكريم؟", a: "114", category: "إسلاميات", diff: "سهل" },
+        { q: "ما هو العنصر الكيميائي الذي يرمز له بالرمز H؟", a: "هيدروجين", category: "علوم", diff: "سهل" },
+        { q: "أي كوكب يلقب بالكوكب الأحمر؟", a: "المريخ", category: "فضاء", diff: "سهل" },
+
+        // متوسطة
+        { q: "في أي عام تأسست شركة أبل؟", a: "1976", category: "تكنولوجيا", diff: "متوسط" },
+        { q: "ما هي عاصمة أستراليا وليست سيدني؟", a: "كانبرا", category: "جغرافيا", diff: "متوسط" },
+        { q: "من هو واضع علم العروض في اللغة العربية؟", a: "الخليل بن أحمد الفراهيدي", category: "تاريخ وأدب", diff: "متوسط" },
+        { q: "ما هو أسرع حيوان بري في العالم؟", a: "الفهد", category: "حيوانات", diff: "متوسط" },
+
+        // صعبة
+        { q: "كم عدد العظام في جسم الإنسان البالغ؟", a: "206", category: "علوم طبية", diff: "صعب" },
+        { q: "ما هي الدولة التي تمتلك أكبر عدد من الجزر في العالم؟", a: "السويد", category: "جغرافيا", diff: "صعب" },
+        { q: "من هو مكتوب قانون الجذب العام؟", a: "اسحاق نيوتن", category: "فيزياء", diff: "صعب" },
+        { q: "ما هو أطول نهر في العالم؟", a: "النيل", category: "جغرافيا", diff: "صعب" }
+    ];
 
     function connectTwitch() {
         const username = document.getElementById('twitchUser').value.trim().toLowerCase();
-        if (!username) return;
+        if (!username) {
+            alert("الرجاء إدخال اسم القناة!");
+            return;
+        }
 
         const status = document.getElementById('twitchStatus');
         status.textContent = 'Twitch: جاري الاتصال...';
@@ -156,28 +183,50 @@
             }
         };
 
-        twitchWS.ononerror = () => {
+        twitchWS.onerror = () => {
             status.textContent = 'Twitch: خطأ في الاتصال';
             status.classList.remove('connected');
         };
 
         twitchWS.onclose = () => {
-            status.textContent = 'Twitch: غير متصل';
+            status.textContent = 'Twitch: غير متصلة';
             status.classList.remove('connected');
         };
     }
 
-    function handleChatMessage(username, message) {
-        const text = message.trim().toUpperCase();
+    // الانتقال لسؤال عشوائي جديد
+    function nextQuestion() {
+        const randomIndex = Math.floor(Math.random() * questionsBank.length);
+        currentQuestionObj = questionsBank[randomIndex];
 
-        if (['A', 'B', 'C', 'D'].includes(text)) {
-            if (text === currentAnswer) {
-                if (!scores[username]) {
-                    scores[username] = { name: username, score: 0 };
-                }
-                scores[username].score += 10;
-                updateLeaderboard();
+        document.getElementById('questionText').textContent = currentQuestionObj.q;
+        document.getElementById('questionCategory').textContent = `المجال: ${currentQuestionObj.category}`;
+        document.getElementById('questionDifficulty').textContent = `الصعوبة: ${currentQuestionObj.diff}`;
+    }
+
+    // إظهار الإجابة الصحيحة على الشاشة
+    function showAnswer() {
+        if (!currentQuestionObj) return;
+        alert(`الإجابة الصحيحة هي: ${currentQuestionObj.a}`);
+    }
+
+    // استقبال الشات والتحقق من الإجابة الكتابية
+    function handleChatMessage(username, message) {
+        if (!currentQuestionObj) return;
+
+        const userAnswer = message.trim().toLowerCase();
+        const correctAnswer = currentQuestionObj.a.toLowerCase();
+
+        // مقارنة الإجابة الكتابية (تدعم التطابق الجزئي أو التام)
+        if (userAnswer === correctAnswer || userAnswer.includes(correctAnswer)) {
+            if (!scores[username]) {
+                scores[username] = { name: username, score: 0 };
             }
+            scores[username].score += 10;
+            updateLeaderboard();
+            
+            // تنبيه مؤقت في الكونسول عند إجابة شخص صحيح
+            console.log(`فاز اللاعب ${username} بإجابة صحيحة!`);
         }
     }
 
