@@ -100,7 +100,7 @@
         </div>
         <div class="input-group">
             <label for="kickUser">اسم قناة Kick:</label>
-            <input type="text" id="kickUser" placeholder="اكتب اسم قناتك هنا مباشرة">
+            <input type="text" id="kickUser" placeholder="اكتب اسم قناتك هنا فقط">
         </div>
         <button onclick="connectAll()">اتصال بالشات 🚀</button>
     </div>
@@ -141,7 +141,6 @@
     function connectTwitch() {
         const username = document.getElementById('twitchUser').value.trim().toLowerCase();
         if (!username) return;
-
         if (twitchWS) twitchWS.close();
 
         twitchWS = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
@@ -158,15 +157,11 @@
 
         twitchWS.onmessage = (event) => {
             const message = event.data;
-            if (message.includes('PING')) {
-                twitchWS.send('PONG :tmi.twitch.tv');
-            }
+            if (message.includes('PING')) twitchWS.send('PONG :tmi.twitch.tv');
             if (message.includes('PRIVMSG')) {
                 const userMatch = message.match(/^:(\w+)!/);
                 const msgMatch = message.match(/PRIVMSG #[^:]+:(.*)/);
-                if (userMatch && msgMatch) {
-                    handleChatMessage(userMatch[1], msgMatch[1].trim(), 'Twitch');
-                }
+                if (userMatch && msgMatch) handleChatMessage(userMatch[1], msgMatch[1].trim(), 'Twitch');
             }
         };
 
@@ -177,7 +172,7 @@
         };
     }
 
-    // --- Kick Connection (بالاسم فقط وبشكل تلقائي) ---
+    // --- Kick Connection (بالاسم فقط وباتصال مستقر) ---
     async function connectKick() {
         const channelName = document.getElementById('kickUser').value.trim().toLowerCase();
         if (!channelName) return;
@@ -185,14 +180,12 @@
         const status = document.getElementById('kickStatus');
         status.textContent = 'Kick: جاري الاتصال...';
 
-        if (pusherClient) {
-            pusherClient.disconnect();
-        }
+        if (pusherClient) pusherClient.disconnect();
 
         let chatroomId = null;
 
         try {
-            // استخدام الـ Worker الخاص بك لجلب المعرف في الخلفية بصمت تام دون إزعاج المبرمج أو الـ Streamer
+            // جلب المعرف الرقمي الحقيقي عبر الـ Worker الخاص بك بصمت تام
             const workerUrl = `https://misty-hall-2fca.sulai-seller.workers.dev/?name=${channelName}`;
             const response = await fetch(workerUrl);
             if (response.ok) {
@@ -202,29 +195,35 @@
                 }
             }
         } catch (e) {
-            console.error("خطأ بالاتصال:", e);
+            console.error("خطأ في جلب المعرف:", e);
         }
 
-        // إذا فشل الـ Worker لأي سبب، نقوم بتجربة معرف افتراضي للطوارئ لضمان عدم توقف البث
-        if (!chatroomId || chatroomId === "1") {
-            // تخطي الحظر عبر مسار بديل مباشر
-            chatroomId = channelName; // في حال دعم السيرفر مستقبلاً الاسماء مباشرة، أو ربطه بمعرف افتراضي
+        if (!chatroomId) {
+            status.textContent = 'Kick: تأكد من اسم القناة';
+            status.classList.remove('connected');
+            return;
         }
 
-        status.textContent = `Kick: متصل (${channelName})`;
-        status.classList.add('connected');
-
-        // الاتصال بمحرك Pusher لـ Kick
+        // الاتصال بمقبس Pusher الرسمي الخاص بـ Kick باستخدام المعرف الصحيح لضمان عدم الفصل
         pusherClient = new Pusher('eb1d5f283082ab080b96', {
             cluster: 'us2',
             forceTLS: true
         });
 
-        // اشتراك ديركت بالشات
         const channel = pusherClient.subscribe(`chatrooms.${chatroomId}.v2`);
+
+        pusherClient.connection.bind('connected', () => {
+            status.textContent = `Kick: متصل (${channelName})`;
+            status.classList.add('connected');
+        });
 
         pusherClient.connection.bind('error', () => {
             status.textContent = 'Kick: خطأ بالاتصال';
+            status.classList.remove('connected');
+        });
+
+        pusherClient.connection.bind('disconnected', () => {
+            status.textContent = 'Kick: غير متصل';
             status.classList.remove('connected');
         });
 
@@ -242,7 +241,6 @@
     // --- Scoring Logic ---
     function handleChatMessage(username, message, platform) {
         const text = message.trim().toUpperCase();
-
         if (['A', 'B', 'C', 'D'].includes(text)) {
             if (text === currentAnswer) {
                 const userKey = `${platform}:${username}`;
@@ -258,7 +256,6 @@
     function updateLeaderboard() {
         const scoreList = document.getElementById('scoreList');
         scoreList.innerHTML = '';
-
         const sorted = Object.values(scores).sort((a, b) => b.score - a.score);
 
         sorted.forEach(player => {
