@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stream Quiz Game - Twitch & Kick</title>
+    <!-- مكتبة Pusher الرسمية لدعم Kick -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -67,11 +69,6 @@
             background: #1e293b;
             color: #fff;
             outline: none;
-        }
-
-        .help-text {
-            font-size: 0.75em;
-            color: #94a3b8;
         }
 
         button {
@@ -175,12 +172,11 @@
     <div class="connection-panel">
         <div class="input-group">
             <label for="twitchUser">اسم قناة Twitch:</label>
-            <input type="text" id="twitchUser" placeholder="مثال: elonksa">
+            <input type="text" id="twitchUser" placeholder="اكتب اسم القناة هنا">
         </div>
         <div class="input-group">
-            <label for="kickUser">اسم قناة Kick (أو Chatroom ID):</label>
-            <input type="text" id="kickUser" placeholder="مثال: 123456 أو اسم القناة">
-            <span class="help-text">اكتب اسم القناة، وإذا لم يتصل اكتب رقم الـ Chatroom ID مباشرة</span>
+            <label for="kickUser">اسم قناة Kick:</label>
+            <input type="text" id="kickUser" placeholder="اكتب اسم القناة هنا">
         </div>
         <button onclick="connectAll()">اتصال بالشات 🚀</button>
     </div>
@@ -201,15 +197,14 @@
     </div>
 
     <div class="scores">
-        <h3>🏆 لائحة الصدارة (أسرع إجابات صحيحة):</h3>
+        <h3>🏆 لائحة الصدارة:</h3>
         <ul class="score-list" id="scoreList"></ul>
     </div>
 </div>
 
 <script>
     let twitchWS = null;
-    let kickWS = null;
-    let kickPingInterval = null;
+    let pusherClient = null;
     let currentAnswer = "A"; 
     let scores = {};
 
@@ -258,91 +253,86 @@
         };
     }
 
-    // --- Kick Connection ---
+    // --- Kick Connection (اسم القناة فقط عبر عدة مسارات احتياطية) ---
     async function connectKick() {
-        const inputVal = document.getElementById('kickUser').value.trim();
-        if (!inputVal) return;
+        const channelName = document.getElementById('kickUser').value.trim().toLowerCase();
+        if (!channelName) return;
 
         const status = document.getElementById('kickStatus');
-        status.textContent = 'Kick: جاري الاتصال...';
+        status.textContent = 'Kick: جاري جلب البيانات...';
 
-        if (kickWS) {
-            clearInterval(kickPingInterval);
-            kickWS.close();
+        if (pusherClient) {
+            pusherClient.disconnect();
         }
 
-        let chatroomId = inputVal;
+        let chatroomId = null;
 
-        // إذا كان المدخل ليس رقماً مجرداً، نحاول الحصول على Chatroom ID من السيرفر
-        if (isNaN(inputVal)) {
+        // القائمة الاحتياطية للبروكسی لفك حماية Cloudflare وتوفير ID الغرفة باسم القناة
+        const proxyUrls = [
+            `https://api.allorigins.win/get?url=${encodeURIComponent('https://kick.com/api/v2/channels/' + channelName)}`,
+            `https://corsproxy.io/?${encodeURIComponent('https://kick.com/api/v2/channels/' + channelName)}`,
+            `https://proxy.cors.sh/https://kick.com/api/v2/channels/${channelName}`
+        ];
+
+        for (let url of proxyUrls) {
             try {
-                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://kick.com/api/v2/channels/' + inputVal.toLowerCase())}`);
-                const data = await res.json();
-                const json = JSON.parse(data.contents);
-                if (json && json.chatroom && json.chatroom.id) {
-                    chatroomId = json.chatroom.id;
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    const content = data.contents ? JSON.parse(data.contents) : data;
+                    if (content && content.chatroom && content.chatroom.id) {
+                        chatroomId = content.chatroom.id;
+                        break; 
+                    }
                 }
             } catch (e) {
-                console.log("Could not resolve username via CORS proxy, using raw input.");
+                console.warn("جاري تجربة مسار آخر لاتصال Kick...");
             }
         }
 
-        // اتصال مقبس Pusher الخاص بـ Kick
-        kickWS = new WebSocket('wss://ws-us2.pusher.com/app/eb1d5f283082ab080b96?protocol=7&client=js&version=7.4.0&flash=false');
+        if (!chatroomId) {
+            status.textContent = 'Kick: تعذر الوصول للقناة (تأكد من اسم القناة)';
+            status.classList.remove('connected');
+            return;
+        }
 
-        kickWS.onopen = () => {
-            console.log("Kick WS Connected. Waiting for connection_established...");
-        };
+        status.textContent = 'Kick: جاري الاتصال بالشات...';
 
-        kickWS.onmessage = (event) => {
-            try {
-                const parsed = JSON.parse(event.data);
+        // الاتصال المباشر بشات Kick
+        pusherClient = new Pusher('eb1d5f283082ab080b96', {
+            cluster: 'us2',
+            forceTLS: true
+        });
 
-                // بعد تأكيد اتصال Pusher بنجاح، نقوم بالاشتراك بالروم
-                if (parsed.event === "pusher:connection_established") {
-                    const channelName = isNaN(chatroomId) ? `chatrooms.${chatroomId}.v2` : `chatrooms.${chatroomId}.v2`;
-                    
-                    kickWS.send(JSON.stringify({
-                        event: "pusher:subscribe",
-                        data: { auth: "", channel: channelName }
-                    }));
+        const channel = pusherClient.subscribe(`chatrooms.${chatroomId}.v2`);
 
-                    status.textContent = `Kick: متصل (${inputVal})`;
-                    status.classList.add('connected');
+        pusherClient.connection.bind('connected', () => {
+            status.textContent = `Kick: متصل (#${channelName})`;
+            status.classList.add('connected');
+        });
 
-                    // إرسال Ping كل 15 ثانية لمنع الفصل التلقائي
-                    if (kickPingInterval) clearInterval(kickPingInterval);
-                    kickPingInterval = setInterval(() => {
-                        if (kickWS && kickWS.readyState === WebSocket.OPEN) {
-                            kickWS.send(JSON.stringify({ event: "pusher:ping", data: {} }));
-                        }
-                    }, 15000);
-                }
+        pusherClient.connection.bind('error', () => {
+            status.textContent = 'Kick: فشل الاتصال';
+            status.classList.remove('connected');
+        });
 
-                // استقبال رسائل الشات
-                if (parsed.event === "App\\Events\\ChatMessageEvent") {
-                    const msgData = JSON.parse(parsed.data);
-                    const sender = msgData.sender ? msgData.sender.username : 'زائر';
-                    const content = msgData.content || '';
-                    handleChatMessage(sender, content, 'Kick');
-                }
-            } catch (err) {
-                // Ignore unexpected parse errors
-            }
-        };
-
-        kickWS.onclose = () => {
+        pusherClient.connection.bind('disconnected', () => {
             status.textContent = 'Kick: غير متصل';
             status.classList.remove('connected');
-            if (kickPingInterval) clearInterval(kickPingInterval);
-        };
+        });
 
-        kickWS.onerror = (err) => {
-            console.error("Kick WS error: ", err);
-        };
+        channel.bind('App\\Events\\ChatMessageEvent', (data) => {
+            try {
+                const sender = data.sender ? data.sender.username : 'زائر';
+                const content = data.content || '';
+                handleChatMessage(sender, content, 'Kick');
+            } catch (e) {
+                console.error("Error processing Kick message", e);
+            }
+        });
     }
 
-    // --- Scoring Logic ---
+    // --- المعالجة واحتساب النقاط ---
     function handleChatMessage(username, message, platform) {
         const text = message.trim().toUpperCase();
 
