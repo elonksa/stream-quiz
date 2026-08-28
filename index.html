@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stream Quiz Game</title>
-    <!-- استدعاء مكتبة Pusher من CDN موثوق ومستقر -->
-    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <title>Stream Quiz Game - Twitch</title>
     <style>
         :root {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
-            --accent-kick: #53fc18;
+            --accent-twitch: #9146ff;
             --text-color: #f8fafc;
         }
 
@@ -55,10 +53,10 @@
 
         button {
             padding: 12px; border: none; border-radius: 8px;
-            background: #0284c7; color: white; font-weight: bold; font-size: 1em;
+            background: #9146ff; color: white; font-weight: bold; font-size: 1em;
             cursor: pointer; transition: 0.2s;
         }
-        button:hover { background: #0369a1; }
+        button:hover { background: #772ce8; }
 
         .status-bar { display: flex; justify-content: center; margin-bottom: 20px; font-size: 0.85em; }
         .status-indicator { padding: 6px 12px; border-radius: 20px; background: #334155; }
@@ -83,24 +81,24 @@
             display: flex; justify-content: space-between; padding: 8px 12px;
             background: #1e293b; margin-bottom: 5px; border-radius: 6px;
         }
-        .badge-kick { color: var(--accent-kick); font-weight: bold; }
+        .badge-twitch { color: var(--accent-twitch); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🎮 مسابقة البث المباشر (Kick Chat)</h1>
+    <h1>🎮 مسابقة البث المباشر (Twitch)</h1>
 
     <div class="connection-panel">
         <div class="input-group">
-            <label for="kickUser">معرف شات Kick (Chatroom ID الرقمي):</label>
-            <input type="text" id="kickUser" placeholder="مثال: 123456 أو ضع الـ ID هنا">
+            <label for="twitchUser">اسم قناة Twitch:</label>
+            <input type="text" id="twitchUser" placeholder="اكتب اسم قناتك هنا">
         </div>
-        <button onclick="connectKick()">اتصال بالشات 🚀</button>
+        <button onclick="connectTwitch()">اتصال بالشات 🚀</button>
     </div>
 
     <div class="status-bar">
-        <span id="kickStatus" class="status-indicator">Kick: غير متصل</span>
+        <span id="twitchStatus" class="status-indicator">Twitch: غير متصل</span>
     </div>
 
     <div class="quiz-card">
@@ -120,61 +118,58 @@
 </div>
 
 <script>
-    let pusherClient = null;
+    let twitchWS = null;
     let currentAnswer = "A"; 
     let scores = {};
 
-    function connectKick() {
-        const chatroomId = document.getElementById('kickUser').value.trim();
-        if (!chatroomId) {
-            alert("الرجاء إدخال رقم الـ Chatroom ID");
-            return;
-        }
+    function connectTwitch() {
+        const username = document.getElementById('twitchUser').value.trim().toLowerCase();
+        if (!username) return;
 
-        const status = document.getElementById('kickStatus');
-        status.textContent = 'Kick: جاري الاتصال...';
+        const status = document.getElementById('twitchStatus');
+        status.textContent = 'Twitch: جاري الاتصال...';
 
-        if (pusherClient) {
-            pusherClient.disconnect();
-        }
+        if (twitchWS) twitchWS.close();
 
-        try {
-            // الاتصال المباشر بنظام Pusher الخاص بـ Kick باستخدام رقم الغرفة الحقيقي
-            pusherClient = new Pusher('eb1d5f283082ab080b96', {
-                cluster: 'us2',
-                forceTLS: true
-            });
+        twitchWS = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 
-            const channel = pusherClient.subscribe(`chatrooms.${chatroomId}.v2`);
+        twitchWS.onopen = () => {
+            twitchWS.send('PASS oauth:schmoopiie');
+            twitchWS.send(`NICK justinfan${Math.floor(Math.random() * 80000 + 10000)}`);
+            twitchWS.send(`JOIN #${username}`);
+            
+            status.textContent = `Twitch: متصل (#${username})`;
+            status.classList.add('connected');
+        };
 
-            pusherClient.connection.bind('connected', () => {
-                status.textContent = `Kick: متصل (ID: ${chatroomId})`;
-                status.classList.add('connected');
-            });
-
-            pusherClient.connection.bind('error', (err) => {
-                console.error("Pusher Error:", err);
-                status.textContent = 'Kick: خطأ بالاتصال';
-                status.classList.remove('connected');
-            });
-
-            channel.bind('App\\Events\\ChatMessageEvent', (data) => {
-                try {
-                    const sender = data.sender ? data.sender.username : 'زائر';
-                    const content = data.content || '';
-                    handleChatMessage(sender, content);
-                } catch (e) {
-                    console.error("Message parse error:", e);
+        twitchWS.onmessage = (event) => {
+            const message = event.data;
+            if (message.includes('PING')) {
+                twitchWS.send('PONG :tmi.twitch.tv');
+            }
+            if (message.includes('PRIVMSG')) {
+                const userMatch = message.match(/^:(\w+)!/);
+                const msgMatch = message.match(/PRIVMSG #[^:]+:(.*)/);
+                if (userMatch && msgMatch) {
+                    handleChatMessage(userMatch[1], msgMatch[1].trim());
                 }
-            });
-        } catch (e) {
-            status.textContent = 'Kick: خطأ بالاتصال';
+            }
+        };
+
+        twitchWS.ononerror = () => {
+            status.textContent = 'Twitch: خطأ في الاتصال';
             status.classList.remove('connected');
-        }
+        };
+
+        twitchWS.onclose = () => {
+            status.textContent = 'Twitch: غير متصل';
+            status.classList.remove('connected');
+        };
     }
 
     function handleChatMessage(username, message) {
         const text = message.trim().toUpperCase();
+
         if (['A', 'B', 'C', 'D'].includes(text)) {
             if (text === currentAnswer) {
                 if (!scores[username]) {
@@ -189,13 +184,14 @@
     function updateLeaderboard() {
         const scoreList = document.getElementById('scoreList');
         scoreList.innerHTML = '';
+
         const sorted = Object.values(scores).sort((a, b) => b.score - a.score);
 
         sorted.forEach(player => {
             const li = document.createElement('li');
             li.className = 'score-item';
             li.innerHTML = `
-                <span><span class="badge-kick">[Kick]</span> ${player.name}</span>
+                <span><span class="badge-twitch">[Twitch]</span> ${player.name}</span>
                 <span><b>${player.score}</b> نقطة</span>
             `;
             scoreList.appendChild(li);
