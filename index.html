@@ -69,6 +69,11 @@
             outline: none;
         }
 
+        .help-text {
+            font-size: 0.75em;
+            color: #94a3b8;
+        }
+
         button {
             grid-column: span 2;
             padding: 12px;
@@ -173,8 +178,9 @@
             <input type="text" id="twitchUser" placeholder="مثال: elonksa">
         </div>
         <div class="input-group">
-            <label for="kickUser">اسم قناة Kick:</label>
-            <input type="text" id="kickUser" placeholder="مثال: elonksa">
+            <label for="kickUser">اسم قناة Kick (أو Chatroom ID):</label>
+            <input type="text" id="kickUser" placeholder="مثال: 123456 أو اسم القناة">
+            <span class="help-text">اكتب اسم القناة، وإذا لم يتصل اكتب رقم الـ Chatroom ID مباشرة</span>
         </div>
         <button onclick="connectAll()">اتصال بالشات 🚀</button>
     </div>
@@ -185,7 +191,7 @@
     </div>
 
     <div class="quiz-card">
-        <div class="question" id="questionText">اضغط "اتصال بالشات" واكتب (A) في الشات لتجربة النقاط!</div>
+        <div class="question" id="questionText">أرسل (A) أو (B) أو (C) أو (D) في الشات لاحتساب النقاط!</div>
         <div class="options" id="optionsContainer">
             <div class="option-btn">A) الخيار الأول</div>
             <div class="option-btn">B) الخيار الثاني</div>
@@ -196,9 +202,7 @@
 
     <div class="scores">
         <h3>🏆 لائحة الصدارة (أسرع إجابات صحيحة):</h3>
-        <ul class="score-list" id="scoreList">
-            <!-- سيتم إضافة النقاط هنا -->
-        </ul>
+        <ul class="score-list" id="scoreList"></ul>
     </div>
 </div>
 
@@ -214,7 +218,7 @@
         connectKick();
     }
 
-    // --- 1. Twitch Connection ---
+    // --- Twitch Connection ---
     function connectTwitch() {
         const username = document.getElementById('twitchUser').value.trim().toLowerCase();
         if (!username) return;
@@ -254,10 +258,10 @@
         };
     }
 
-    // --- 2. Kick Connection (Direct & Stable) ---
+    // --- Kick Connection ---
     async function connectKick() {
-        const channelName = document.getElementById('kickUser').value.trim().toLowerCase();
-        if (!channelName) return;
+        const inputVal = document.getElementById('kickUser').value.trim();
+        if (!inputVal) return;
 
         const status = document.getElementById('kickStatus');
         status.textContent = 'Kick: جاري الاتصال...';
@@ -267,45 +271,55 @@
             kickWS.close();
         }
 
-        // محاولة جلب معلومات الشات عبر البروكسي المجاني لتفادي CORS
-        let chatroomId = null;
-        try {
-            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://kick.com/api/v1/channels/' + channelName)}`);
-            const wrapper = await res.json();
-            const data = JSON.parse(wrapper.contents);
-            if (data && data.chatroom && data.chatroom.id) {
-                chatroomId = data.chatroom.id;
+        let chatroomId = inputVal;
+
+        // إذا كان المدخل ليس رقماً مجرداً، نحاول الحصول على Chatroom ID من السيرفر
+        if (isNaN(inputVal)) {
+            try {
+                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://kick.com/api/v2/channels/' + inputVal.toLowerCase())}`);
+                const data = await res.json();
+                const json = JSON.parse(data.contents);
+                if (json && json.chatroom && json.chatroom.id) {
+                    chatroomId = json.chatroom.id;
+                }
+            } catch (e) {
+                console.log("Could not resolve username via CORS proxy, using raw input.");
             }
-        } catch (e) {
-            console.warn("CORS fetch failed, fallback to channel name logic.");
         }
 
-        // الاتصال بمقبس Pusher الخاص بـ Kick
+        // اتصال مقبس Pusher الخاص بـ Kick
         kickWS = new WebSocket('wss://ws-us2.pusher.com/app/eb1d5f283082ab080b96?protocol=7&client=js&version=7.4.0&flash=false');
 
         kickWS.onopen = () => {
-            // الاشتراك في غرفة الشات (سواء بالـ ID أو باسم القناة)
-            const targetChannel = chatroomId ? `chatrooms.${chatroomId}.v2` : `channel.${channelName}`;
-            
-            kickWS.send(JSON.stringify({
-                event: "pusher:subscribe",
-                data: { auth: "", channel: targetChannel }
-            }));
-
-            status.textContent = `Kick: متصل (#${channelName})`;
-            status.classList.add('connected');
-
-            // إرسال Ping كل 20 ثانية للحفاظ على استقرار الاتصال وعدم القطع
-            kickPingInterval = setInterval(() => {
-                if (kickWS && kickWS.readyState === WebSocket.OPEN) {
-                    kickWS.send(JSON.stringify({ event: "pusher:ping", data: {} }));
-                }
-            }, 20000);
+            console.log("Kick WS Connected. Waiting for connection_established...");
         };
 
         kickWS.onmessage = (event) => {
             try {
                 const parsed = JSON.parse(event.data);
+
+                // بعد تأكيد اتصال Pusher بنجاح، نقوم بالاشتراك بالروم
+                if (parsed.event === "pusher:connection_established") {
+                    const channelName = isNaN(chatroomId) ? `chatrooms.${chatroomId}.v2` : `chatrooms.${chatroomId}.v2`;
+                    
+                    kickWS.send(JSON.stringify({
+                        event: "pusher:subscribe",
+                        data: { auth: "", channel: channelName }
+                    }));
+
+                    status.textContent = `Kick: متصل (${inputVal})`;
+                    status.classList.add('connected');
+
+                    // إرسال Ping كل 15 ثانية لمنع الفصل التلقائي
+                    if (kickPingInterval) clearInterval(kickPingInterval);
+                    kickPingInterval = setInterval(() => {
+                        if (kickWS && kickWS.readyState === WebSocket.OPEN) {
+                            kickWS.send(JSON.stringify({ event: "pusher:ping", data: {} }));
+                        }
+                    }, 15000);
+                }
+
+                // استقبال رسائل الشات
                 if (parsed.event === "App\\Events\\ChatMessageEvent") {
                     const msgData = JSON.parse(parsed.data);
                     const sender = msgData.sender ? msgData.sender.username : 'زائر';
@@ -313,12 +327,8 @@
                     handleChatMessage(sender, content, 'Kick');
                 }
             } catch (err) {
-                // تجاهل الرسائل غير المتوافقة
+                // Ignore unexpected parse errors
             }
-        };
-
-        kickWS.onerror = (err) => {
-            console.error("Kick WS Error", err);
         };
 
         kickWS.onclose = () => {
@@ -326,12 +336,14 @@
             status.classList.remove('connected');
             if (kickPingInterval) clearInterval(kickPingInterval);
         };
+
+        kickWS.onerror = (err) => {
+            console.error("Kick WS error: ", err);
+        };
     }
 
-    // --- 3. Chat Messages & Scoring Logic ---
+    // --- Scoring Logic ---
     function handleChatMessage(username, message, platform) {
-        console.log(`[${platform}] ${username}: ${message}`);
-
         const text = message.trim().toUpperCase();
 
         if (['A', 'B', 'C', 'D'].includes(text)) {
