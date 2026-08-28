@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stream Quiz Game - Twitch & Kick</title>
-    <!-- مكتبة Pusher الرسمية لدعم Kick -->
+    <!-- مكتبة Pusher الرسمية لضمان ثبات الاتصال -->
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <style>
         :root {
@@ -172,11 +172,11 @@
     <div class="connection-panel">
         <div class="input-group">
             <label for="twitchUser">اسم قناة Twitch:</label>
-            <input type="text" id="twitchUser" placeholder="اكتب اسم القناة هنا">
+            <input type="text" id="twitchUser" placeholder="مثال: elonksa">
         </div>
         <div class="input-group">
             <label for="kickUser">اسم قناة Kick:</label>
-            <input type="text" id="kickUser" placeholder="اكتب اسم القناة هنا">
+            <input type="text" id="kickUser" placeholder="مثال: Kaysan">
         </div>
         <button onclick="connectAll()">اتصال بالشات 🚀</button>
     </div>
@@ -213,7 +213,7 @@
         connectKick();
     }
 
-    // --- Twitch Connection ---
+    // --- 1. Twitch Connection ---
     function connectTwitch() {
         const username = document.getElementById('twitchUser').value.trim().toLowerCase();
         if (!username) return;
@@ -253,7 +253,7 @@
         };
     }
 
-    // --- Kick Connection (اسم القناة فقط عبر عدة مسارات احتياطية) ---
+    // --- 2. Kick Connection (جلب تلقائي ومباشر بالاسم) ---
     async function connectKick() {
         const channelName = document.getElementById('kickUser').value.trim().toLowerCase();
         if (!channelName) return;
@@ -267,38 +267,36 @@
 
         let chatroomId = null;
 
-        // القائمة الاحتياطية للبروكسی لفك حماية Cloudflare وتوفير ID الغرفة باسم القناة
-        const proxyUrls = [
-            `https://api.allorigins.win/get?url=${encodeURIComponent('https://kick.com/api/v2/channels/' + channelName)}`,
-            `https://corsproxy.io/?${encodeURIComponent('https://kick.com/api/v2/channels/' + channelName)}`,
-            `https://proxy.cors.sh/https://kick.com/api/v2/channels/${channelName}`
+        // محاولة جلب ID عبر خوادم متعددة وسريعة لتفادي التعليق
+        const apiEndpoints = [
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://kick.com/api/v2/channels/' + channelName)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent('https://kick.com/api/v2/channels/' + channelName)}`
         ];
 
-        for (let url of proxyUrls) {
+        for (let url of apiEndpoints) {
             try {
                 const res = await fetch(url);
                 if (res.ok) {
                     const data = await res.json();
-                    const content = data.contents ? JSON.parse(data.contents) : data;
-                    if (content && content.chatroom && content.chatroom.id) {
-                        chatroomId = content.chatroom.id;
-                        break; 
+                    if (data && data.chatroom && data.chatroom.id) {
+                        chatroomId = data.chatroom.id;
+                        break;
                     }
                 }
             } catch (e) {
-                console.warn("جاري تجربة مسار آخر لاتصال Kick...");
+                console.log("محاولة سيرفر آخر...");
             }
         }
 
         if (!chatroomId) {
-            status.textContent = 'Kick: تعذر الوصول للقناة (تأكد من اسم القناة)';
+            status.textContent = 'Kick: فشل التعرف على اسم القناة';
             status.classList.remove('connected');
             return;
         }
 
-        status.textContent = 'Kick: جاري الاتصال بالشات...';
+        status.textContent = 'Kick: جاري الاتصال...';
 
-        // الاتصال المباشر بشات Kick
+        // الاتصال بمقبس Pusher الرسمي الخاص بـ Kick
         pusherClient = new Pusher('eb1d5f283082ab080b96', {
             cluster: 'us2',
             forceTLS: true
@@ -307,12 +305,12 @@
         const channel = pusherClient.subscribe(`chatrooms.${chatroomId}.v2`);
 
         pusherClient.connection.bind('connected', () => {
-            status.textContent = `Kick: متصل (#${channelName})`;
+            status.textContent = `Kick: متصل (${channelName})`;
             status.classList.add('connected');
         });
 
         pusherClient.connection.bind('error', () => {
-            status.textContent = 'Kick: فشل الاتصال';
+            status.textContent = 'Kick: غير متصل (خطأ)';
             status.classList.remove('connected');
         });
 
@@ -327,12 +325,12 @@
                 const content = data.content || '';
                 handleChatMessage(sender, content, 'Kick');
             } catch (e) {
-                console.error("Error processing Kick message", e);
+                console.error(e);
             }
         });
     }
 
-    // --- المعالجة واحتساب النقاط ---
+    // --- 3. احتساب النقاط ---
     function handleChatMessage(username, message, platform) {
         const text = message.trim().toUpperCase();
 
