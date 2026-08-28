@@ -185,7 +185,7 @@
     </div>
 
     <div class="quiz-card">
-        <div class="question" id="questionText">اضغط "اتصال بالشات" ثم بدء اللعبة!</div>
+        <div class="question" id="questionText">اضغط "اتصال بالشات" واكتب (A) في الشات لتجربة النقاط!</div>
         <div class="options" id="optionsContainer">
             <div class="option-btn">A) الخيار الأول</div>
             <div class="option-btn">B) الخيار الثاني</div>
@@ -195,7 +195,7 @@
     </div>
 
     <div class="scores">
-        <h3>🏆 لائمة الصدارة (أسرع إجابات صحيحية):</h3>
+        <h3>🏆 لائحة الصدارة (أسرع إجابات صحيحة):</h3>
         <ul class="score-list" id="scoreList">
             <!-- سيتم إضافة النقاط هنا -->
         </ul>
@@ -205,7 +205,8 @@
 <script>
     let twitchWS = null;
     let kickWS = null;
-    let currentAnswer = "A"; // الإجابة الصحيحة الحالية للتجربة
+    let kickPingInterval = null;
+    let currentAnswer = "A"; 
     let scores = {};
 
     function connectAll() {
@@ -253,98 +254,77 @@
         };
     }
 
-    // --- 2. Kick Connection (Fix applied) ---
+    // --- 2. Kick Connection (Direct & Stable) ---
     async function connectKick() {
         const channelName = document.getElementById('kickUser').value.trim().toLowerCase();
         if (!channelName) return;
 
         const status = document.getElementById('kickStatus');
-        status.textContent = 'Kick: جاري الحصول على معرف القناة...';
+        status.textContent = 'Kick: جاري الاتصال...';
 
-        try {
-            // الحصول على Kick Channel ID من السيرفر المفتوح
-            const response = await fetch(`https://kick.com/api/v1/channels/${channelName}`);
-            const data = await response.json();
-            
-            if (!data || !data.chatroom || !data.chatroom.id) {
-                alert('لم يتم العثور على قناة Kick بهذا الاسم!');
-                status.textContent = 'Kick: اسم القناة غير صحيح';
-                return;
-            }
-
-            const chatroomId = data.chatroom.id;
-            startKickWebSocket(chatroomId, channelName);
-
-        } catch (err) {
-            console.log("استخدام الاتصال المباشر عبر Pusher...");
-            // في حال محجبة API Kick سنحاول طريقة Pusher مباشرة عبر الاسم
-            startKickWebSocketFallback(channelName);
+        if (kickWS) {
+            clearInterval(kickPingInterval);
+            kickWS.close();
         }
-    }
 
-    function startKickWebSocket(chatroomId, channelName) {
-        if (kickWS) kickWS.close();
+        // محاولة جلب معلومات الشات عبر البروكسي المجاني لتفادي CORS
+        let chatroomId = null;
+        try {
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://kick.com/api/v1/channels/' + channelName)}`);
+            const wrapper = await res.json();
+            const data = JSON.parse(wrapper.contents);
+            if (data && data.chatroom && data.chatroom.id) {
+                chatroomId = data.chatroom.id;
+            }
+        } catch (e) {
+            console.warn("CORS fetch failed, fallback to channel name logic.");
+        }
 
-        // Pusher Key المعتمد لـ Kick
+        // الاتصال بمقبس Pusher الخاص بـ Kick
         kickWS = new WebSocket('wss://ws-us2.pusher.com/app/eb1d5f283082ab080b96?protocol=7&client=js&version=7.4.0&flash=false');
 
         kickWS.onopen = () => {
-            // الاشتراك في غرفة الشات الخاصة بالقناة
-            const subscribeData = JSON.stringify({
+            // الاشتراك في غرفة الشات (سواء بالـ ID أو باسم القناة)
+            const targetChannel = chatroomId ? `chatrooms.${chatroomId}.v2` : `channel.${channelName}`;
+            
+            kickWS.send(JSON.stringify({
                 event: "pusher:subscribe",
-                data: { auth: "", channel: `chatrooms.${chatroomId}.v2` }
-            });
-            kickWS.send(subscribeData);
+                data: { auth: "", channel: targetChannel }
+            }));
 
-            const status = document.getElementById('kickStatus');
             status.textContent = `Kick: متصل (#${channelName})`;
             status.classList.add('connected');
 
-            // إرسال Ping دوري لمنع انقطاع الاتصال
-            setInterval(() => {
-                if (kickWS.readyState === WebSocket.OPEN) {
+            // إرسال Ping كل 20 ثانية للحفاظ على استقرار الاتصال وعدم القطع
+            kickPingInterval = setInterval(() => {
+                if (kickWS && kickWS.readyState === WebSocket.OPEN) {
                     kickWS.send(JSON.stringify({ event: "pusher:ping", data: {} }));
                 }
-            }, 30000);
-        };
-
-        kickWS.onmessage = (event) => {
-            const response = JSON.parse(event.data);
-            
-            if (response.event === "App\\Events\\ChatMessageEvent") {
-                const dataData = JSON.parse(response.data);
-                const sender = dataData.sender.username;
-                const content = dataData.content;
-                handleChatMessage(sender, content, 'Kick');
-            }
-        };
-
-        kickWS.onclose = () => {
-            const status = document.getElementById('kickStatus');
-            status.textContent = 'Kick: غير متصل';
-            status.classList.remove('connected');
-        };
-    }
-
-    function startKickWebSocketFallback(channelName) {
-        // الاتصال الاحتياطي
-        if (kickWS) kickWS.close();
-        kickWS = new WebSocket('wss://ws-us2.pusher.com/app/eb1d5f283082ab080b96?protocol=7&client=js&version=7.4.0&flash=false');
-
-        kickWS.onopen = () => {
-            const status = document.getElementById('kickStatus');
-            status.textContent = `Kick: متصل تجريبي (#${channelName})`;
-            status.classList.add('connected');
+            }, 20000);
         };
 
         kickWS.onmessage = (event) => {
             try {
-                const response = JSON.parse(event.data);
-                if (response.event === "App\\Events\\ChatMessageEvent") {
-                    const dataData = JSON.parse(response.data);
-                    handleChatMessage(dataData.sender.username, dataData.content, 'Kick');
+                const parsed = JSON.parse(event.data);
+                if (parsed.event === "App\\Events\\ChatMessageEvent") {
+                    const msgData = JSON.parse(parsed.data);
+                    const sender = msgData.sender ? msgData.sender.username : 'زائر';
+                    const content = msgData.content || '';
+                    handleChatMessage(sender, content, 'Kick');
                 }
-            } catch(e){}
+            } catch (err) {
+                // تجاهل الرسائل غير المتوافقة
+            }
+        };
+
+        kickWS.onerror = (err) => {
+            console.error("Kick WS Error", err);
+        };
+
+        kickWS.onclose = () => {
+            status.textContent = 'Kick: غير متصل';
+            status.classList.remove('connected');
+            if (kickPingInterval) clearInterval(kickPingInterval);
         };
     }
 
@@ -354,7 +334,6 @@
 
         const text = message.trim().toUpperCase();
 
-        // التحقق من خيارات الإجابة (A, B, C, D)
         if (['A', 'B', 'C', 'D'].includes(text)) {
             if (text === currentAnswer) {
                 const userKey = `${platform}:${username}`;
