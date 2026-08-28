@@ -6,6 +6,8 @@
     <title>لعبة أسئلة الشات للبث المباشر</title>
     <!-- مكتبة الألعاب النارية والورقية 🎉 -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- مكتبة Socket.IO الخاصة بشات تيك توك -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { 
@@ -31,7 +33,6 @@
         input[type="text"], input[type="number"], select { background: #242629; color: #fff; border: 1px solid #72757e; width: 100%; }
         input:focus, select:focus { border-color: #7f5af0; outline: none; }
         
-        /* شبكة المجالات المتنوعة */
         .categories-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -55,48 +56,17 @@
             transition: all 0.2s ease;
         }
 
-        .category-item:hover {
-            border-color: #7f5af0;
-        }
+        .category-item:hover { border-color: #7f5af0; }
+        .category-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: #7f5af0; cursor: pointer; }
+        .category-item span { font-size: 14px; color: #fffffe; font-weight: bold; }
 
-        .category-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #7f5af0;
-            cursor: pointer;
-        }
-
-        .category-item span {
-            font-size: 14px;
-            color: #fffffe;
-            font-weight: bold;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .small-btn {
-            background: #242629;
-            color: #94a1b2;
-            padding: 6px 12px;
-            font-size: 13px;
-            border: 1px solid #72757e;
-            width: auto;
-            margin: 0;
-        }
-
-        .small-btn:hover {
-            background: #7f5af0;
-            color: #fff;
-        }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        .small-btn { background: #242629; color: #94a1b2; padding: 6px 12px; font-size: 13px; border: 1px solid #72757e; width: auto; margin: 0; }
+        .small-btn:hover { background: #7f5af0; color: #fff; }
 
         button { background: #7f5af0; color: #fff; cursor: pointer; font-weight: bold; width: 100%; transition: all 0.2s ease; margin-top: 10px; }
         button:hover { background: #6b46c1; transform: translateY(-2px); }
         
-        /* مربع عرض السؤال الرئيسي */
         .question-box { 
             background: #242629; 
             padding: 35px 25px; 
@@ -109,19 +79,11 @@
         }
         .question-title { font-size: 28px; font-weight: bold; color: #fffffe; margin: 0; line-height: 1.5; }
         
-        /* شريط العداد التنازلي */
         .timer-container { width: 100%; background-color: #0f0e17; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 15px; border: 1px solid #72757e; }
         .timer-bar { height: 100%; background-color: #ff8906; width: 100%; transition: width 0.1s linear, background-color 0.3s ease; }
         .timer-text { font-size: 18px; font-weight: bold; color: #ff8906; text-align: center; }
 
-        .difficulty-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            margin-right: 10px;
-        }
+        .difficulty-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; margin-right: 10px; }
         .diff-easy { background: #2cb67d; color: #0f0e17; }
         .diff-medium { background: #ff8906; color: #0f0e17; }
         .diff-hard { background: #e53170; color: #ffffff; }
@@ -138,7 +100,6 @@
         .status-connecting { background: #ff8906; color: #000; }
         .status-connected { background: #2cb67d; color: #000; }
 
-        /* 👑 شاشة الإعلان عن الفائز */
         .winner-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -182,12 +143,19 @@
         <div id="setup-card" class="card">
             <h2>⚙️ إعدادات اللعبة</h2>
             
-            <label>اسم قناة تويتش (Channel Name):</label>
-            <input type="text" id="channel-input" placeholder="مثال: xsulaix">
+            <label>اختر منصة البث المباشر:</label>
+            <select id="platform-select">
+                <option value="twitch" selected>🟣 Twitch (تويتش)</option>
+                <option value="kick">🟢 Kick (كيك)</option>
+                <option value="tiktok">🎵 TikTok Live (تيك توك)</option>
+            </select>
 
-            <!-- أزرار تحديد مجالات الأسئلة التفاعلية -->
+            <label>اسم اسم المستخدم (Username/Channel):</label>
+            <input type="text" id="channel-input" placeholder="اكتب اسم حسابك هنا...">
+
+            <!-- أزرار تحديد مجالات الأسئلة -->
             <div style="margin-top: 10px;">
-                <h3>🎯 حدد مجالات الأسئلة (12 مجالاً متنوعاً):</h3>
+                <h3>🎯 حدد مجالات الأسئلة (12 مجالاً):</h3>
                 <div class="btn-group">
                     <button type="button" class="small-btn" onclick="toggleAllCategories(true)">تحديد الكل</button>
                     <button type="button" class="small-btn" onclick="toggleAllCategories(false)">إلغاء الكل</button>
@@ -233,7 +201,7 @@
 
         <!-- منطقة السؤال النشط -->
         <div id="game-card" class="card" style="display: none;">
-            <div id="connection-status" class="connection-status status-connecting">جاري الاتصال بشات تويتش...</div>
+            <div id="connection-status" class="connection-status status-connecting">جاري الاتصال بالشات...</div>
             
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
@@ -244,19 +212,16 @@
                 <span id="target-display" style="color: #ff8906; font-weight: bold; font-size: 18px;">هدف الفوز: 0 نقطة</span>
             </div>
 
-            <!-- شريط العداد التنازلي -->
             <div class="timer-container" style="margin-top: 12px;">
                 <div id="timer-bar" class="timer-bar"></div>
             </div>
             
-            <!-- مربع السؤال -->
             <div class="question-box">
                 <div id="question-text" class="question-title">جاري تحميل السؤال...</div>
             </div>
             
             <div id="status-box" class="status-box"></div>
 
-            <!-- مربع تجربة يدوي -->
             <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #72757e;">
                 <label style="font-size: 12px; color: #94a1b2;">اختبار يدوي (محاكاة إجابة الشات):</label>
                 <div style="display: flex; gap: 10px;">
@@ -287,90 +252,50 @@
     </div>
 
     <script>
-        // ==========================================
-        // 📚 بنك أسئلة موسّع وشامل لـ 12 مجالاً مختلفاً
-        // ==========================================
-        
         const questionPool = {
             easy: [
-                // أنمي
                 { category: "أنمي ومانجا", question: "ما اسم القرصان صاحب قبعة القش في أنمي ون بيس؟", correct: ["لوفي", "مونكي دي لوفي"] },
                 { category: "أنمي ومانجا", question: "ما اسم الوحش المحبوس داخل ناروتو؟", correct: ["الكيوبي", "كوراما"] },
-                // سينما ودراما
                 { category: "سينما ودراما", question: "ما اسم المسلسل الكوري الشهير صاحب لعبة 'الضوء الأحمر والضوء الأخضر'؟", correct: ["لعبة الحبار", "squid game"] },
-                // ألعاب
                 { category: "ألعاب وفيديوجيمز", question: "ما اسم البطل الرئيسي في سلسلة ألعاب God of War؟", correct: ["كريتوس", "كرايتوس", "kratos"] },
-                // رياضة
                 { category: "رياضة وكرة قدم", question: "من هو اللاعب الملقب بـ 'الدون'؟", correct: ["كريستيانو رونالدو", "رونالدو", "كريستيانو"] },
-                // تكنولوجيا وتقنية
                 { category: "تكنولوجيا وتقنية", question: "ما اسم نظام التشغيل للهواتف الذكية المطور من قبل شركة جوجل؟", correct: ["اندرويد", "أندرويد", "android"] },
                 { category: "تكنولوجيا وتقنية", question: "ما هي الشركة المالكة لنظام التشغيل ويندوز Windows؟", correct: ["مايكروسوفت", "microsoft"] },
-                // جغرافيا وطبيعة
                 { category: "جغرافيا وطبيعة", question: "ما هي عاصمة المملكة العربية السعودية؟", correct: ["الرياض"] },
                 { category: "جغرافيا وطبيعة", question: "ما هو أكبر محيط في العالم مساحة؟", correct: ["الهادئ", "المحيط الهادئ"] },
-                // تاريخ وإسلاميات
                 { category: "تاريخ وإسلاميات", question: "ما هي أطول سورة في القرآن الكريم؟", correct: ["البقرة", "سورة البقرة"] },
-                // صحة وطب
                 { category: "صحة وطب", question: "ما هو العضو المسؤول عن ضخ الدم لكل أجزاء الجسم؟", correct: ["القلب"] },
-                // أدب وشعر
                 { category: "أدب وشعر", question: "من هو الشاعر الملقب بـ 'أمير الشعراء'؟", correct: ["أحمد شوقي", "احمد شوقي"] },
-                // سيارات ومحركات
                 { category: "سيارات ومحركات", question: "ما اسم الشركة الألمانية الشهيرة التي تحتوي علامتها على 4 حلقات متداخلة؟", correct: ["أودي", "اودي", "audi"] },
-                // علوم وفضاء
                 { category: "علوم وفضاء", question: "ما هو الكوكب الملقب بـ 'الكوكب الأحمر'؟", correct: ["المريخ"] },
-                // ألغاز وسرعة بديهة
                 { category: "ألغاز وسرعة بديهة", question: "ما هو الشيء الذي كلما أخذت منه كَبُر؟", correct: ["الحفرة"] }
             ],
             medium: [
-                // أنمي
                 { category: "أنمي ومانجا", question: "ما اسم المفكرة التي تقتل أي شخص يُكتب اسمه فيها؟", correct: ["دفتر الموت", "مذكرة الموت", "death note"] },
-                // سينما ودراما
                 { category: "سينما ودراما", question: "ما اسم الممثل الذي لعب دور 'الجوكر' في فيلم The Dark Knight عام 2008؟", correct: ["هيث ليدجر"] },
-                // ألعاب
                 { category: "ألعاب وفيديوجيمز", question: "ما هي الشركة المبرمجة والمالكة للعبة League of Legends؟", correct: ["رايوت", "رايوت جيمز", "riot"] },
-                // رياضة
                 { category: "رياضة وكرة قدم", question: "من هو المدرب التاريخي لنادي مانشستر يونايتد الذي أعتزل عام 2013؟", correct: ["فيرغسون", "سير أليكس فيرغسون", "فيرجسون"] },
-                // تكنولوجيا وتقنية
                 { category: "تكنولوجيا وتقنية", question: "ما اسم اللغة الأساسية المستخدمة لتنسيق وتصميم صفحات الويب وتحديد ألوانها وشكلها؟", correct: ["css"] },
-                // جغرافيا وطبيعة
                 { category: "جغرافيا وطبيعة", question: "ما هي عاصمة أستراليا؟", correct: ["كانبرا", "كانبيرا"] },
-                // تاريخ وإسلاميات
                 { category: "تاريخ وإسلاميات", question: "في أي سنة ميلادية فتح المسلمون مكة (فتح مكة)؟", correct: ["630", "630م"] },
-                // صحة وطب
                 { category: "صحة وطب", question: "ما هي المادة المسؤولة عن إعطاء اللون للبشرة والشعر لدى الإنسان؟", correct: ["الميلانين", "ميلانين"] },
-                // أدب وشعر
                 { category: "أدب وشعر", question: "من هو مؤلف رواية 'البؤساء' الشهيرة؟", correct: ["فيكتور هوغو", "فيكتور هوجو"] },
-                // سيارات ومحركات
                 { category: "سيارات ومحركات", question: "ما اسم قسم الأداء العالي والرياضي في شركة بي إم دبليو BMW؟", correct: ["M", "قسم M", "ام"] },
-                // علوم وفضاء
                 { category: "علوم وفضاء", question: "ما هو العنصر الكيميائي الأكثر وفرة في الكون؟", correct: ["الهيدروجين"] },
-                // ألغاز وسرعة بديهة
                 { category: "ألغاز وسرعة بديهة", question: "ما هو الشيء الذي يمشي ويقف وليس له أرجل؟", correct: ["الساعة", "ساعة"] }
             ],
             hard: [
-                // أنمي
                 { category: "أنمي ومانجا", question: "ما اسم السيف الأول الذي يمتلكه زورو والمقترن بوعد صديقته كوينا في ون بيس؟", correct: ["واذو إيتشيمونجي", "واذو ايتشيمونجي", "ايتشيمونجي"] },
-                // سينما ودراما
                 { category: "سينما ودراما", question: "في مسلسل Breaking Bad، ما اسم المطعم الوهمي المملوك لـ غوس فرينغ؟", correct: ["لوس بولوس هيرمانوس", "لوس بولوس"] },
-                // ألعاب
                 { category: "ألعاب وفيديوجيمز", question: "ما اسم السيف الأسطوري المملوك لـ لينك في سلسلة ألعاب The Legend of Zelda؟", correct: ["ماستر سورد", "master sword"] },
-                // رياضة
                 { category: "رياضة وكرة قدم", question: "من هو اللاعب الذي سجل هدف الفوز لإسبانيا في نهائي كأس العالم 2010؟", correct: ["إنييستا", "انيستا", "أندريس إنييستا"] },
-                // تكنولوجيا وتقنية
                 { category: "تكنولوجيا وتقنية", question: "ما اسم أول كمبيوتر ميكانيكي قابل للبرمجة ابتكره تشارلز باباج؟", correct: ["المحرك التحليلي", "الآلة التحليلية"] },
-                // جغرافيا وطبيعة
                 { category: "جغرافيا وطبيعة", question: "ما هي عاصمة دولة كازاخستان الحالية؟", correct: ["أستانا", "استانا", "نور سلطان"] },
-                // تاريخ وإسلاميات
                 { category: "تاريخ وإسلاميات", question: "من هو القائد المسلم الذي فتح أندلوسيا (الأندلس)؟", correct: ["طارق بن زياد", "طارق زياد"] },
-                // صحة وطب
                 { category: "صحة وطب", question: "ما اسم الغدة الملقبة بـ 'سيدة الغدد' لسيطرتها على بقية الهرمونات؟", correct: ["النخامية", "الغدة النخامية"] },
-                // أدب وشعر
                 { category: "أدب وشعر", question: "من صاحب البيت الشهير: (الخَيْلُ وَاللّيْلُ وَالبَيْداءُ تَعرِفُني)؟", correct: ["المتنبي", "أبو الطيب المتنبي"] },
-                // سيارات ومحركات
                 { category: "سيارات ومحركات", question: "ما هي أسرع سيارة إنتاجية مخصصة للطرق في العالم وتخطت حاجز 490 كم/س؟", correct: ["بوغاتي تشيرون", "بوغاتي", "bugatti"] },
-                // علوم وفضاء
                 { category: "علوم وفضاء", question: "ما هي أقرب مجرة لكوكبة مجرتنا (درب التبانة)؟", correct: ["أندروميدا", "اندرومايدا", "المرأة المسلسلة"] },
-                // ألغاز وسرعة بديهة
                 { category: "ألغاز وسرعة بديهة", question: "شيء مليء بالثقوب ولكنه يحتفظ بالماء، فما هو؟", correct: ["الإسفنج", "الاسفنج"] }
             ]
         };
@@ -387,26 +312,22 @@
         let categoryIndex = 0;
         let selectedDifficultyMode = "dynamic";
         let activeCategories = [];
-
         const POINTS_PER_ANSWER = 5;
 
         function toggleAllCategories(selectAll) {
-            document.querySelectorAll('.category-checkbox').forEach(cb => {
-                cb.checked = selectAll;
-            });
+            document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = selectAll);
         }
 
         document.getElementById('start-btn').addEventListener('click', () => {
+            const platform = document.getElementById('platform-select').value;
             const channelName = document.getElementById('channel-input').value.trim().toLowerCase();
             targetScore = parseInt(document.getElementById('target-score').value) || 100;
             questionTimeLimit = parseInt(document.getElementById('time-select').value) || 10;
             selectedDifficultyMode = document.getElementById('difficulty-select').value;
-
-            // تجميع كافة المجالات النشطة المحددة من قبل الستريمر
             activeCategories = Array.from(document.querySelectorAll('.category-checkbox:checked')).map(cb => cb.value);
 
             if (!channelName) {
-                alert("يرجى إدخال اسم قناة تويتش!");
+                alert("يرجى إدخال اسم حساب المنصة!");
                 return;
             }
 
@@ -420,7 +341,15 @@
             document.getElementById('game-card').style.display = 'block';
 
             loadNextQuestion();
-            connectDirectTwitchWS(channelName);
+
+            // الاتصال بحسب المنصة المختارة
+            if (platform === 'twitch') {
+                connectTwitchWS(channelName);
+            } else if (platform === 'kick') {
+                connectKickWS(channelName);
+            } else if (platform === 'tiktok') {
+                connectTikTokWS(channelName);
+            }
         });
 
         document.getElementById('test-chat-btn').addEventListener('click', () => {
@@ -433,7 +362,6 @@
 
         function getNextQuestion() {
             let difficulty = "easy";
-
             if (selectedDifficultyMode === "dynamic") {
                 if (roundQuestionCount > 8) difficulty = "hard";
                 else if (roundQuestionCount > 4) difficulty = "medium";
@@ -510,7 +438,6 @@
 
             timerInterval = setInterval(() => {
                 timeRemaining -= 0.1;
-
                 if (timeRemaining <= 0) {
                     clearInterval(timerInterval);
                     handleTimeout();
@@ -527,12 +454,7 @@
 
             timerBar.style.width = `${percent}%`;
             timerText.innerText = `المتبقي: ${Math.ceil(timeRemaining)} ثانية`;
-
-            if (percent < 30) {
-                timerBar.style.backgroundColor = '#e53170';
-            } else {
-                timerBar.style.backgroundColor = '#ff8906';
-            }
+            timerBar.style.backgroundColor = (percent < 30) ? '#e53170' : '#ff8906';
         }
 
         function handleTimeout() {
@@ -547,7 +469,10 @@
             setTimeout(loadNextQuestion, 3000);
         }
 
-        function connectDirectTwitchWS(channel) {
+        // ==========================================
+        // 🟣 1. الاتصال بشات TWITCH
+        // ==========================================
+        function connectTwitchWS(channel) {
             const statusEl = document.getElementById('connection-status');
             const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 
@@ -556,25 +481,19 @@
                 socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                 socket.send(`NICK ${nick}`);
                 socket.send(`JOIN #${channel}`);
-                
-                statusEl.innerText = `🟢 متصل بشات القناة: #${channel}`;
+                statusEl.innerText = `🟢 متصل بشات Twitch: #${channel}`;
                 statusEl.className = "connection-status status-connected";
             };
 
             socket.onmessage = (event) => {
                 const raw = event.data;
-
-                if (raw.startsWith('PING')) {
-                    socket.send('PONG :tmi.twitch.tv');
-                    return;
-                }
+                if (raw.startsWith('PING')) { socket.send('PONG :tmi.twitch.tv'); return; }
 
                 if (raw.includes('PRIVMSG')) {
                     let username = "متابع";
                     const nameMatch = raw.match(/display-name=([^;]+)/);
-                    if (nameMatch && nameMatch[1]) {
-                        username = nameMatch[1];
-                    } else {
+                    if (nameMatch && nameMatch[1]) username = nameMatch[1];
+                    else {
                         const userMatch = raw.match(/:(\w+)!/);
                         if (userMatch) username = userMatch[1];
                     }
@@ -587,10 +506,79 @@
                 }
             };
 
-            socket.onerror = () => {
-                statusEl.innerText = `🔴 خطأ في الاتصال بشات تويتش`;
+            socket.onerror = () => { statusEl.innerText = `🔴 خطأ في الاتصال بشات Twitch`; };
+        }
+
+        // ==========================================
+        // 🟢 2. الاتصال بشات KICK
+        // ==========================================
+        async function connectKickWS(channel) {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.innerText = `⏳ جاري الاتصال بقناة Kick: ${channel}...`;
+
+            try {
+                // جلب معرف الشات القناة عبر API الخفيف
+                const res = await fetch(`https://kick.com/api/v2/channels/${channel}`);
+                const data = await res.json();
+                const chatroomId = data.chatroom.id;
+
+                const socket = new WebSocket('wss://ws-us2.pusher.com/app/eb1d5f28b06d4070146f?protocol=7&client=js&version=7.4.0&flash=false');
+
+                socket.onopen = () => {
+                    socket.send(JSON.stringify({
+                        event: "pusher:subscribe",
+                        data: { auth: "", channel: `chatrooms.${chatroomId}.v2` }
+                    }));
+                    statusEl.innerText = `🟢 متصل بشات Kick: ${channel}`;
+                    statusEl.className = "connection-status status-connected";
+                };
+
+                socket.onmessage = (event) => {
+                    const parsed = JSON.parse(event.data);
+                    if (parsed.event === "App\\Events\\ChatMessageEvent") {
+                        const messageData = JSON.parse(parsed.data);
+                        const username = messageData.sender.username;
+                        const content = messageData.content;
+                        processAnswer(username, content);
+                    }
+                };
+            } catch (err) {
+                statusEl.innerText = `🔴 تعذر العثور على قناة Kick المحددة أو الاتصال بها!`;
+            }
+        }
+
+        // ==========================================
+        // 🎵 3. الاتصال بشات TIKTOK LIVE
+        // ==========================================
+        function connectTikTokWS(channel) {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.innerText = `⏳ جاري الاتصال ببث TikTok: @${channel}...`;
+
+            // الاتصال بقناة الخادم السحابي الوسيط الخاص بشات تيك توك
+            const socket = io('https://tiktok-chat-reader.zerody.one');
+
+            socket.emit('setUniqueId', channel);
+
+            socket.on('connected', () => {
+                statusEl.innerText = `🟢 متصل بشات TikTok Live: @${channel}`;
+                statusEl.className = "connection-status status-connected";
+            });
+
+            socket.on('chat', (data) => {
+                const username = data.nickname || data.uniqueId;
+                const message = data.comment;
+                processAnswer(username, message);
+            });
+
+            socket.on('streamEnd', () => {
+                statusEl.innerText = `🔴 البث المباشر في TikTok انتهى أو مغلق!`;
                 statusEl.className = "connection-status status-connecting";
-            };
+            });
+
+            socket.on('error', (err) => {
+                statusEl.innerText = `🔴 خطأ في الاتصال بتيك توك (تأكد أن الحساب يبث مباشر الآن!)`;
+                statusEl.className = "connection-status status-connecting";
+            });
         }
 
         function normalizeText(text) {
