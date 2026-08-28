@@ -212,7 +212,7 @@
         connectKick();
     }
 
-    // Twitch Connection
+    // --- Twitch Connection ---
     function connectTwitch() {
         const username = document.getElementById('twitchUser').value.trim().toLowerCase();
         if (!username) return;
@@ -252,7 +252,7 @@
         };
     }
 
-    // Kick Connection (حل جلب المعرف المطور)
+    // --- Kick Connection (باستخدام Cloudflare Worker الخاص بك) ---
     async function connectKick() {
         const channelName = document.getElementById('kickUser').value.trim().toLowerCase();
         if (!channelName) return;
@@ -267,43 +267,29 @@
         let chatroomId = null;
 
         try {
-            // جلب صفحة القناة من خلال خادم تحويل مخصص للبيانات لتجاوز Cloudflare
-            const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://kick.com/' + channelName)}`);
-            const data = await response.json();
+            // الاستعلام المباشر عبر الـ Worker السريع
+            const workerUrl = `https://misty-hall-2fca.sulai-seller.workers.dev/?name=${channelName}`;
+            const response = await fetch(workerUrl);
             
-            if (data && data.contents) {
-                // البحث عن رقم chatroom_id داخل كود الصفحة المرجعة
-                const match = data.contents.match(/"chatroom":\s*\{\s*"id":\s*(\d+)/) || data.contents.match(/"chatroom_id":\s*(\d+)/);
-                if (match && match[1]) {
-                    chatroomId = match[1];
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.chatroom && data.chatroom.id) {
+                    chatroomId = data.chatroom.id;
                 }
             }
         } catch (e) {
-            console.error("فشل المسار الأول، جاري تجربة المسار البديل...");
-        }
-
-        // مسار احتياطي ثانٍ في حال حظر الأول
-        if (!chatroomId) {
-            try {
-                const res = await fetch(`https://corsproxy.io/?https://kick.com/api/v1/channels/${channelName}`);
-                const resData = await res.json();
-                if (resData && resData.chatroom) {
-                    chatroomId = resData.chatroom.id;
-                }
-            } catch (err) {
-                console.error("فشل جلب المعرف.");
-            }
+            console.error("خطأ في الاتصال بالـ Worker:", e);
         }
 
         if (!chatroomId) {
-            status.textContent = 'Kick: تعذر جلب القناة (تأكد من الاسم)';
+            status.textContent = 'Kick: تعذر العثور على اسم القناة';
             status.classList.remove('connected');
             return;
         }
 
         status.textContent = 'Kick: جاري الاتصال...';
 
-        // الاتصال المباشر عبر Pusher
+        // الاتصال المباشر بـ Kick عبر Pusher
         pusherClient = new Pusher('eb1d5f283082ab080b96', {
             cluster: 'us2',
             forceTLS: true
@@ -337,7 +323,7 @@
         });
     }
 
-    // Scoring Logic
+    // --- Scoring Logic ---
     function handleChatMessage(username, message, platform) {
         const text = message.trim().toUpperCase();
 
