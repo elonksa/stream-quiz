@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة أسئلة الشات للبث المباشر</title>
-    <!-- مكتبة الألعاب النارية والورقية 🎉 -->
+    <title>لعبة أسئلة الشات للبث المباشر - Twitch</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -15,23 +14,19 @@
             padding: 20px; 
             display: flex; 
             gap: 20px; 
-            position: relative; 
             min-height: 100vh; 
-            overflow-x: hidden; 
         }
         
         .main-container { flex: 3; display: flex; flex-direction: column; gap: 20px; }
         .card { background: #16161a; padding: 25px; border-radius: 16px; border: 1px solid #242629; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
         .sidebar { flex: 1.1; background: #16161a; padding: 20px; border-radius: 16px; border: 1px solid #242629; height: fit-content; }
         
-        h2, h3 { color: #7f5af0; margin-top: 0; font-size: 24px; }
+        h2 { color: #7f5af0; margin-top: 0; font-size: 24px; }
         h3 { font-size: 18px; color: #fffffe; margin-bottom: 10px; }
         label { font-size: 14px; color: #94a1b2; font-weight: 600; }
         input[type="text"], input[type="number"], select, button { padding: 14px 16px; font-size: 16px; border-radius: 8px; border: none; margin: 8px 0 16px 0; }
         input[type="text"], input[type="number"], select { background: #242629; color: #fff; border: 1px solid #72757e; width: 100%; }
-        input:focus, select:focus { border-color: #7f5af0; outline: none; }
         
-        /* شبكة المجالات المتنوعة */
         .categories-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -40,230 +35,118 @@
             background: #242629;
             padding: 15px;
             border-radius: 10px;
-            border: 1px solid #72757e;
         }
 
         .category-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            background: #16161a;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #383a40;
-            transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 10px; cursor: pointer;
+            background: #16161a; padding: 10px; border-radius: 8px; border: 1px solid #383a40;
         }
 
-        .category-item:hover {
-            border-color: #7f5af0;
-        }
+        .category-item input { width: 18px; height: 18px; accent-color: #7f5af0; }
+        .category-item span { font-size: 14px; color: #fffffe; font-weight: bold; }
 
-        .category-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #7f5af0;
-            cursor: pointer;
-        }
-
-        .category-item span {
-            font-size: 14px;
-            color: #fffffe;
-            font-weight: bold;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .small-btn {
-            background: #242629;
-            color: #94a1b2;
-            padding: 6px 12px;
-            font-size: 13px;
-            border: 1px solid #72757e;
-            width: auto;
-            margin: 0;
-        }
-
-        .small-btn:hover {
-            background: #7f5af0;
-            color: #fff;
-        }
-
-        button { background: #7f5af0; color: #fff; cursor: pointer; font-weight: bold; width: 100%; transition: all 0.2s ease; margin-top: 10px; }
-        button:hover { background: #6b46c1; transform: translateY(-2px); }
+        button { background: #7f5af0; color: #fff; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+        button:hover { background: #6b46c1; }
         
-        /* مربع عرض السؤال الرئيسي */
         .question-box { 
-            background: #242629; 
-            padding: 35px 25px; 
-            border-radius: 14px; 
-            border: 2px solid #7f5af0; 
-            text-align: center; 
-            margin: 15px 0 10px 0; 
-            position: relative; 
-            box-shadow: inset 0 0 15px rgba(127, 90, 240, 0.2);
+            background: #242629; padding: 35px 25px; border-radius: 14px; 
+            border: 2px solid #7f5af0; text-align: center; margin: 15px 0 10px 0; 
         }
-        .question-title { font-size: 28px; font-weight: bold; color: #fffffe; margin: 0; line-height: 1.5; }
+        .question-title { font-size: 26px; font-weight: bold; color: #fffffe; }
         
-        /* شريط العداد التنازلي */
-        .timer-container { width: 100%; background-color: #0f0e17; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 15px; border: 1px solid #72757e; }
-        .timer-bar { height: 100%; background-color: #ff8906; width: 100%; transition: width 0.1s linear, background-color 0.3s ease; }
+        .timer-container { width: 100%; background: #0f0e17; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 15px; }
+        .timer-bar { height: 100%; background: #ff8906; width: 100%; transition: width 0.1s linear; }
         .timer-text { font-size: 18px; font-weight: bold; color: #ff8906; text-align: center; }
 
-        .difficulty-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            margin-right: 10px;
-        }
+        .difficulty-badge { padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; }
         .diff-easy { background: #2cb67d; color: #0f0e17; }
         .diff-medium { background: #ff8906; color: #0f0e17; }
-        .diff-hard { background: #e53170; color: #ffffff; }
+        .diff-hard { background: #e53170; color: #fff; }
 
-        .status-box { padding: 18px; font-weight: bold; border-radius: 10px; display: none; margin-top: 15px; text-align: center; font-size: 22px; }
+        .status-box { padding: 18px; font-weight: bold; border-radius: 10px; display: none; margin-top: 15px; text-align: center; font-size: 20px; }
         .status-success { background: #2cb67d; color: #000; }
         .status-timeout { background: #e53170; color: #fff; }
 
         .leaderboard-list { list-style: none; padding: 0; margin: 0; }
         .leaderboard-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #242629; font-size: 18px; }
         .score { color: #2cb67d; font-weight: bold; }
-        
-        .connection-status { padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 15px; }
-        .status-connecting { background: #ff8906; color: #000; }
-        .status-connected { background: #2cb67d; color: #000; }
 
-        /* 👑 شاشة الإعلان عن الفائز */
         .winner-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(15, 14, 23, 0.94);
-            backdrop-filter: blur(8px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            flex-direction: column;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 14, 23, 0.95); display: none;
+            justify-content: center; align-items: center; z-index: 9999;
         }
 
         .winner-card {
-            background: linear-gradient(135deg, #16161a 0%, #242629 100%);
-            border: 3px solid #ff8906;
-            box-shadow: 0 0 50px rgba(255, 137, 6, 0.4);
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            max-width: 500px;
-            width: 90%;
-            animation: popup 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            background: #16161a; border: 3px solid #ff8906; border-radius: 20px;
+            padding: 40px; text-align: center; max-width: 500px; width: 90%;
         }
-
-        @keyframes popup {
-            0% { transform: scale(0.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .winner-title { font-size: 36px; color: #ff8906; margin-bottom: 10px; font-weight: 900; }
-        .winner-name { font-size: 42px; color: #2cb67d; font-weight: bold; text-shadow: 0 0 15px rgba(44, 182, 125, 0.5); margin: 15px 0; }
-        .winner-score { font-size: 22px; color: #fffffe; margin-bottom: 25px; }
-        .restart-btn { background: #ff8906; color: #000; font-size: 18px; padding: 15px 30px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
-        .restart-btn:hover { background: #e07800; }
     </style>
 </head>
 <body>
 
     <div class="main-container">
-        <!-- إعدادات البداية -->
+        <!-- إعدادات اللعبة -->
         <div id="setup-card" class="card">
-            <h2>⚙️ إعدادات اللعبة</h2>
+            <h2>⚙️ إعدادات اللعبة (متجددة عبر الإنترنت)</h2>
             
-            <label>اسم قناة تويتش (Channel Name):</label>
-            <input type="text" id="channel-input" placeholder="مثال: xsulaix">
+            <label>اسم قناة تويتش (Twitch Channel):</label>
+            <input type="text" id="channel-input" placeholder="مثال: xsulai">
 
-            <!-- أزرار تحديد مجالات الأسئلة التفاعلية -->
-            <div style="margin-top: 10px;">
-                <h3>🎯 حدد مجالات الأسئلة (12 مجالاً متنوعاً):</h3>
-                <div class="btn-group">
-                    <button type="button" class="small-btn" onclick="toggleAllCategories(true)">تحديد الكل</button>
-                    <button type="button" class="small-btn" onclick="toggleAllCategories(false)">إلغاء الكل</button>
-                </div>
-                <div class="categories-grid">
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="أنمي ومانجا" checked><span>🎌 أنمي ومانجا</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="سينما ودراما" checked><span>🎬 سينما ودراما</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="ألعاب وفيديوجيمز" checked><span>🎮 ألعاب وفيديوجيمز</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="رياضة وكرة قدم" checked><span>⚽ رياضة وكرة قدم</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="تكنولوجيا وتقنية" checked><span>💻 تكنولوجيا وتقنية</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="جغرافيا وطبيعة" checked><span>🌍 جغرافيا وطبيعة</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="تاريخ وإسلاميات" checked><span>📜 تاريخ وإسلاميات</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="صحة وطب" checked><span>🏥 صحة وطب</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="أدب وشعر" checked><span>📚 أدب وشعر</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="سيارات ومحركات" checked><span>🏎️ سيارات ومحركات</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="علوم وفضاء" checked><span>🚀 علوم وفضاء</span></label>
-                    <label class="category-item"><input type="checkbox" class="category-checkbox" value="ألغاز وسرعة بديهة" checked><span>🧩 ألغاز وسرعة بديهة</span></label>
-                </div>
+            <h3>🎯 اختر الفئات المطلوبة:</h3>
+            <div class="categories-grid">
+                <label class="category-item"><input type="checkbox" class="category-checkbox" value="15" checked><span>🎮 ألعاب وفيديوجيمز</span></label>
+                <label class="category-item"><input type="checkbox" class="category-checkbox" value="31" checked><span>🎌 أنمي وكرتون</span></label>
+                <label class="category-item"><input type="checkbox" class="category-checkbox" value="11" checked><span>🎬 أفلام وسينما</span></label>
+                <label class="category-item"><input type="checkbox" class="category-checkbox" value="18" checked><span>💻 تكنولوجيا وكمبيوتر</span></label>
+                <label class="category-item"><input type="checkbox" class="category-checkbox" value="21" checked><span>⚽ رياضة</span></label>
+                <label class="category-item"><input type="checkbox" class="category-checkbox" value="22" checked><span>🌍 جغرافيا وطبيعة</span></label>
+                <label class="category-item"><input type="checkbox" class="category-checkbox" value="23" checked><span>📜 تاريخ</span></label>
+                <label class="category-item"><input type="checkbox" class="category-checkbox" value="17" checked><span>🚀 علوم وفضاء</span></label>
             </div>
             
-            <label>مستوى صعوبة الأسئلة المطلوب:</label>
+            <label>مستوى الصعوبة:</label>
             <select id="difficulty-select">
-                <option value="dynamic" selected>🔄 متدرج تلقائياً (من السهل إلى الصعب مع الوقت)</option>
-                <option value="easy">🟢 سهل (معلومات خفيفة)</option>
-                <option value="medium">🟠 متوسط (تحدي مناسب للشات)</option>
-                <option value="hard">🔴 صعب (للمحترفين)</option>
+                <option value="easy">🟢 سهل</option>
+                <option value="medium" selected>🟠 متوسط</option>
+                <option value="hard">🔴 صعب</option>
             </select>
 
             <label>وقت السؤال (بالثواني):</label>
             <select id="time-select">
-                <option value="5">5 ثوانٍ (سريع جداً)</option>
-                <option value="10" selected>10 ثوانٍ (متوسط - موصى به)</option>
+                <option value="10" selected>10 ثوانٍ</option>
                 <option value="15">15 ثانية</option>
                 <option value="20">20 ثانية</option>
-                <option value="30">30 ثانية</option>
             </select>
 
-            <label>نقاط الفوز (Winning Target):</label>
-            <input type="number" id="target-score" value="100" step="5">
+            <label>نقاط الفوز:</label>
+            <input type="number" id="target-score" value="50" step="5">
             
             <button id="start-btn">ابدأ اللعبة 🚀</button>
         </div>
 
         <!-- منطقة السؤال النشط -->
         <div id="game-card" class="card" style="display: none;">
-            <div id="connection-status" class="connection-status status-connecting">جاري الاتصال بشات تويتش...</div>
+            <div id="connection-status" style="padding: 10px; background: #ff8906; color: #000; font-weight: bold; text-align: center; border-radius: 8px; margin-bottom: 15px;">جاري الاتصال بالشات...</div>
             
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <span id="category-badge" style="color: #94a1b2; font-size: 18px; font-weight: bold;">المجال: ...</span>
-                    <span id="difficulty-badge" class="difficulty-badge diff-easy">سهل</span>
+                    <span id="category-badge" style="color: #94a1b2; font-size: 16px; font-weight: bold;">المجال: ...</span>
+                    <span id="difficulty-badge" class="difficulty-badge diff-easy">متوسط</span>
                 </div>
                 <span id="timer-text" class="timer-text">المتبقي: 0 ثانية</span>
-                <span id="target-display" style="color: #ff8906; font-weight: bold; font-size: 18px;">هدف الفوز: 0 نقطة</span>
+                <span id="target-display" style="color: #ff8906; font-weight: bold;">هدف الفوز: 0</span>
             </div>
 
-            <!-- شريط العداد التنازلي -->
             <div class="timer-container" style="margin-top: 12px;">
                 <div id="timer-bar" class="timer-bar"></div>
             </div>
             
-            <!-- مربع السؤال -->
             <div class="question-box">
-                <div id="question-text" class="question-title">جاري تحميل السؤال...</div>
+                <div id="question-text" class="question-title">جاري جلب سؤال جديد وترجمته...</div>
             </div>
             
             <div id="status-box" class="status-box"></div>
-
-            <!-- مربع تجربة يدوي -->
-            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #72757e;">
-                <label style="font-size: 12px; color: #94a1b2;">اختبار يدوي (محاكاة إجابة الشات):</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="test-chat-input" placeholder="اكتب كلمة الإجابة واضغط اختبار...">
-                    <button id="test-chat-btn" style="width: auto;">اختبار 🧪</button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -275,143 +158,44 @@
         </ul>
     </div>
 
-    <!-- 🏆 نافذة إعلان الفائز -->
+    <!-- نافذة إعلان الفائز -->
     <div id="winner-overlay" class="winner-overlay">
         <div class="winner-card">
-            <div style="font-size: 60px; margin-bottom: 10px;">🏆</div>
-            <div class="winner-title">بطل اللعبة!</div>
-            <div id="winner-name-display" class="winner-name">XsulaiX</div>
-            <div id="winner-score-display" class="winner-score">وصل إلى 100 نقطة بنجاح! 🎉</div>
-            <button class="restart-btn" onclick="resetGame()">بدء جولة جديدة 🔄</button>
+            <div style="font-size: 60px;">🏆</div>
+            <h2 style="color: #ff8906; font-size: 32px;">بطل اللعبة!</h2>
+            <div id="winner-name-display" style="font-size: 38px; color: #2cb67d; font-weight: bold; margin: 15px 0;">-</div>
+            <div id="winner-score-display" style="font-size: 20px; color: #fff; margin-bottom: 20px;">-</div>
+            <button onclick="location.reload()" style="background: #ff8906; color: #000; padding: 12px 25px; border-radius: 8px; font-weight: bold;">بدء جولة جديدة 🔄</button>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // 📚 بنك أسئلة موسّع وشامل لـ 12 مجالاً مختلفاً
-        // ==========================================
-        
-        const questionPool = {
-            easy: [
-                // أنمي
-                { category: "أنمي ومانجا", question: "ما اسم القرصان صاحب قبعة القش في أنمي ون بيس؟", correct: ["لوفي", "مونكي دي لوفي"] },
-                { category: "أنمي ومانجا", question: "ما اسم الوحش المحبوس داخل ناروتو؟", correct: ["الكيوبي", "كوراما"] },
-                // سينما ودراما
-                { category: "سينما ودراما", question: "ما اسم المسلسل الكوري الشهير صاحب لعبة 'الضوء الأحمر والضوء الأخضر'؟", correct: ["لعبة الحبار", "squid game"] },
-                // ألعاب
-                { category: "ألعاب وفيديوجيمز", question: "ما اسم البطل الرئيسي في سلسلة ألعاب God of War؟", correct: ["كريتوس", "كرايتوس", "kratos"] },
-                // رياضة
-                { category: "رياضة وكرة قدم", question: "من هو اللاعب الملقب بـ 'الدون'؟", correct: ["كريستيانو رونالدو", "رونالدو", "كريستيانو"] },
-                // تكنولوجيا وتقنية
-                { category: "تكنولوجيا وتقنية", question: "ما اسم نظام التشغيل للهواتف الذكية المطور من قبل شركة جوجل؟", correct: ["اندرويد", "أندرويد", "android"] },
-                { category: "تكنولوجيا وتقنية", question: "ما هي الشركة المالكة لنظام التشغيل ويندوز Windows؟", correct: ["مايكروسوفت", "microsoft"] },
-                // جغرافيا وطبيعة
-                { category: "جغرافيا وطبيعة", question: "ما هي عاصمة المملكة العربية السعودية؟", correct: ["الرياض"] },
-                { category: "جغرافيا وطبيعة", question: "ما هو أكبر محيط في العالم مساحة؟", correct: ["الهادئ", "المحيط الهادئ"] },
-                // تاريخ وإسلاميات
-                { category: "تاريخ وإسلاميات", question: "ما هي أطول سورة في القرآن الكريم؟", correct: ["البقرة", "سورة البقرة"] },
-                // صحة وطب
-                { category: "صحة وطب", question: "ما هو العضو المسؤول عن ضخ الدم لكل أجزاء الجسم؟", correct: ["القلب"] },
-                // أدب وشعر
-                { category: "أدب وشعر", question: "من هو الشاعر الملقب بـ 'أمير الشعراء'؟", correct: ["أحمد شوقي", "احمد شوقي"] },
-                // سيارات ومحركات
-                { category: "سيارات ومحركات", question: "ما اسم الشركة الألمانية الشهيرة التي تحتوي علامتها على 4 حلقات متداخلة؟", correct: ["أودي", "اودي", "audi"] },
-                // علوم وفضاء
-                { category: "علوم وفضاء", question: "ما هو الكوكب الملقب بـ 'الكوكب الأحمر'؟", correct: ["المريخ"] },
-                // ألغاز وسرعة بديهة
-                { category: "ألغاز وسرعة بديهة", question: "ما هو الشيء الذي كلما أخذت منه كَبُر؟", correct: ["الحفرة"] }
-            ],
-            medium: [
-                // أنمي
-                { category: "أنمي ومانجا", question: "ما اسم المفكرة التي تقتل أي شخص يُكتب اسمه فيها؟", correct: ["دفتر الموت", "مذكرة الموت", "death note"] },
-                // سينما ودراما
-                { category: "سينما ودراما", question: "ما اسم الممثل الذي لعب دور 'الجوكر' في فيلم The Dark Knight عام 2008؟", correct: ["هيث ليدجر"] },
-                // ألعاب
-                { category: "ألعاب وفيديوجيمز", question: "ما هي الشركة المبرمجة والمالكة للعبة League of Legends؟", correct: ["رايوت", "رايوت جيمز", "riot"] },
-                // رياضة
-                { category: "رياضة وكرة قدم", question: "من هو المدرب التاريخي لنادي مانشستر يونايتد الذي أعتزل عام 2013؟", correct: ["فيرغسون", "سير أليكس فيرغسون", "فيرجسون"] },
-                // تكنولوجيا وتقنية
-                { category: "تكنولوجيا وتقنية", question: "ما اسم اللغة الأساسية المستخدمة لتنسيق وتصميم صفحات الويب وتحديد ألوانها وشكلها؟", correct: ["css"] },
-                // جغرافيا وطبيعة
-                { category: "جغرافيا وطبيعة", question: "ما هي عاصمة أستراليا؟", correct: ["كانبرا", "كانبيرا"] },
-                // تاريخ وإسلاميات
-                { category: "تاريخ وإسلاميات", question: "في أي سنة ميلادية فتح المسلمون مكة (فتح مكة)؟", correct: ["630", "630م"] },
-                // صحة وطب
-                { category: "صحة وطب", question: "ما هي المادة المسؤولة عن إعطاء اللون للبشرة والشعر لدى الإنسان؟", correct: ["الميلانين", "ميلانين"] },
-                // أدب وشعر
-                { category: "أدب وشعر", question: "من هو مؤلف رواية 'البؤساء' الشهيرة؟", correct: ["فيكتور هوغو", "فيكتور هوجو"] },
-                // سيارات ومحركات
-                { category: "سيارات ومحركات", question: "ما اسم قسم الأداء العالي والرياضي في شركة بي إم دبليو BMW؟", correct: ["M", "قسم M", "ام"] },
-                // علوم وفضاء
-                { category: "علوم وفضاء", question: "ما هو العنصر الكيميائي الأكثر وفرة في الكون؟", correct: ["الهيدروجين"] },
-                // ألغاز وسرعة بديهة
-                { category: "ألغاز وسرعة بديهة", question: "ما هو الشيء الذي يمشي ويقف وليس له أرجل؟", correct: ["الساعة", "ساعة"] }
-            ],
-            hard: [
-                // أنمي
-                { category: "أنمي ومانجا", question: "ما اسم السيف الأول الذي يمتلكه زورو والمقترن بوعد صديقته كوينا في ون بيس؟", correct: ["واذو إيتشيمونجي", "واذو ايتشيمونجي", "ايتشيمونجي"] },
-                // سينما ودراما
-                { category: "سينما ودراما", question: "في مسلسل Breaking Bad، ما اسم المطعم الوهمي المملوك لـ غوس فرينغ؟", correct: ["لوس بولوس هيرمانوس", "لوس بولوس"] },
-                // ألعاب
-                { category: "ألعاب وفيديوجيمز", question: "ما اسم السيف الأسطوري المملوك لـ لينك في سلسلة ألعاب The Legend of Zelda؟", correct: ["ماستر سورد", "master sword"] },
-                // رياضة
-                { category: "رياضة وكرة قدم", question: "من هو اللاعب الذي سجل هدف الفوز لإسبانيا في نهائي كأس العالم 2010؟", correct: ["إنييستا", "انيستا", "أندريس إنييستا"] },
-                // تكنولوجيا وتقنية
-                { category: "تكنولوجيا وتقنية", question: "ما اسم أول كمبيوتر ميكانيكي قابل للبرمجة ابتكره تشارلز باباج؟", correct: ["المحرك التحليلي", "الآلة التحليلية"] },
-                // جغرافيا وطبيعة
-                { category: "جغرافيا وطبيعة", question: "ما هي عاصمة دولة كازاخستان الحالية؟", correct: ["أستانا", "استانا", "نور سلطان"] },
-                // تاريخ وإسلاميات
-                { category: "تاريخ وإسلاميات", question: "من هو القائد المسلم الذي فتح أندلوسيا (الأندلس)؟", correct: ["طارق بن زياد", "طارق زياد"] },
-                // صحة وطب
-                { category: "صحة وطب", question: "ما اسم الغدة الملقبة بـ 'سيدة الغدد' لسيطرتها على بقية الهرمونات؟", correct: ["النخامية", "الغدة النخامية"] },
-                // أدب وشعر
-                { category: "أدب وشعر", question: "من صاحب البيت الشهير: (الخَيْلُ وَاللّيْلُ وَالبَيْداءُ تَعرِفُني)؟", correct: ["المتنبي", "أبو الطيب المتنبي"] },
-                // سيارات ومحركات
-                { category: "سيارات ومحركات", question: "ما هي أسرع سيارة إنتاجية مخصصة للطرق في العالم وتخطت حاجز 490 كم/س؟", correct: ["بوغاتي تشيرون", "بوغاتي", "bugatti"] },
-                // علوم وفضاء
-                { category: "علوم وفضاء", question: "ما هي أقرب مجرة لكوكبة مجرتنا (درب التبانة)؟", correct: ["أندروميدا", "اندرومايدا", "المرأة المسلسلة"] },
-                // ألغاز وسرعة بديهة
-                { category: "ألغاز وسرعة بديهة", question: "شيء مليء بالثقوب ولكنه يحتفظ بالماء، فما هو؟", correct: ["الإسفنج", "الاسفنج"] }
-            ]
-        };
-
-        let usedQuestions = new Set();
         let scores = {};
-        let targetScore = 100;
+        let targetScore = 50;
         let questionTimeLimit = 10;
         let timeRemaining = 10;
         let timerInterval = null;
-        let currentQuestionObj = null;
+        let currentAnswerAr = "";
         let isQuestionActive = false;
-        let roundQuestionCount = 0;
-        let categoryIndex = 0;
-        let selectedDifficultyMode = "dynamic";
         let activeCategories = [];
+        let selectedDifficulty = "medium";
 
         const POINTS_PER_ANSWER = 5;
 
-        function toggleAllCategories(selectAll) {
-            document.querySelectorAll('.category-checkbox').forEach(cb => {
-                cb.checked = selectAll;
-            });
-        }
-
         document.getElementById('start-btn').addEventListener('click', () => {
             const channelName = document.getElementById('channel-input').value.trim().toLowerCase();
-            targetScore = parseInt(document.getElementById('target-score').value) || 100;
+            targetScore = parseInt(document.getElementById('target-score').value) || 50;
             questionTimeLimit = parseInt(document.getElementById('time-select').value) || 10;
-            selectedDifficultyMode = document.getElementById('difficulty-select').value;
-
-            // تجميع كافة المجالات النشطة المحددة من قبل الستريمر
+            selectedDifficulty = document.getElementById('difficulty-select').value;
             activeCategories = Array.from(document.querySelectorAll('.category-checkbox:checked')).map(cb => cb.value);
 
             if (!channelName) {
-                alert("يرجى إدخال اسم قناة تويتش!");
+                alert("يرجى إدخال اسم القناة!");
                 return;
             }
 
             if (activeCategories.length === 0) {
-                alert("يرجى اختيار مجال واحد على الأقل لتبدأ اللعبة!");
+                alert("اختر فئة واحدة على الأقل!");
                 return;
             }
 
@@ -419,88 +203,63 @@
             document.getElementById('setup-card').style.display = 'none';
             document.getElementById('game-card').style.display = 'block';
 
-            loadNextQuestion();
-            connectDirectTwitchWS(channelName);
+            connectTwitch(channelName);
+            loadNextApiQuestion();
         });
 
-        document.getElementById('test-chat-btn').addEventListener('click', () => {
-            const input = document.getElementById('test-chat-input');
-            if (input.value && isQuestionActive) {
-                processAnswer("مُختبِر_يدوي", input.value);
-                input.value = "";
-            }
-        });
-
-        function getNextQuestion() {
-            let difficulty = "easy";
-
-            if (selectedDifficultyMode === "dynamic") {
-                if (roundQuestionCount > 8) difficulty = "hard";
-                else if (roundQuestionCount > 4) difficulty = "medium";
-            } else {
-                difficulty = selectedDifficultyMode;
-            }
-
-            const targetCategory = activeCategories[categoryIndex % activeCategories.length];
-            categoryIndex++;
-
-            let availablePool = questionPool[difficulty].filter(q => q.category === targetCategory && !usedQuestions.has(q.question));
-
-            if (availablePool.length === 0) {
-                const allDiffs = ["easy", "medium", "hard"];
-                for (let d of allDiffs) {
-                    availablePool = questionPool[d].filter(q => q.category === targetCategory && !usedQuestions.has(q.question));
-                    if (availablePool.length > 0) { difficulty = d; break; }
-                }
-            }
-
-            if (availablePool.length === 0) {
-                const allDiffs = ["easy", "medium", "hard"];
-                for (let d of allDiffs) {
-                    availablePool = questionPool[d].filter(q => activeCategories.includes(q.category) && !usedQuestions.has(q.question));
-                    if (availablePool.length > 0) { difficulty = d; break; }
-                }
-            }
-
-            if (availablePool.length === 0) {
-                usedQuestions.clear();
-                return getNextQuestion();
-            }
-
-            const selectedQuestion = availablePool[Math.floor(Math.random() * availablePool.length)];
-            selectedQuestion.difficulty = difficulty;
-            usedQuestions.add(selectedQuestion.question);
-            return selectedQuestion;
-        }
-
-        function loadNextQuestion() {
+        // جلب سؤال عشوائي متجدد من الـ API مع ترجمته فورياً
+        async function loadNextApiQuestion() {
             isQuestionActive = false;
             clearInterval(timerInterval);
+            document.getElementById('status-box').style.display = 'none';
+            document.getElementById('question-text').innerText = "جاري جلب سؤال جديد وترجمته...";
 
-            const statusBox = document.getElementById('status-box');
-            statusBox.style.display = 'none';
+            const randomCat = activeCategories[Math.floor(Math.random() * activeCategories.length)];
+            const url = `https://opentdb.com/api.php?amount=1&category=${randomCat}&difficulty=${selectedDifficulty}&type=multiple`;
 
-            roundQuestionCount++;
-            currentQuestionObj = getNextQuestion();
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.results && data.results.length > 0) {
+                    const item = data.results[0];
+                    const rawQuestion = decodeHTMLEntities(item.question);
+                    const rawAnswer = decodeHTMLEntities(item.correct_answer);
 
-            document.getElementById('category-badge').innerText = `المجال: ${currentQuestionObj.category}`;
-            
-            const diffBadge = document.getElementById('difficulty-badge');
-            if (currentQuestionObj.difficulty === "easy") {
-                diffBadge.innerText = "سهل 🟢";
-                diffBadge.className = "difficulty-badge diff-easy";
-            } else if (currentQuestionObj.difficulty === "medium") {
-                diffBadge.innerText = "متوسط 🟠";
-                diffBadge.className = "difficulty-badge diff-medium";
-            } else {
-                diffBadge.innerText = "صعب 🔥";
-                diffBadge.className = "difficulty-badge diff-hard";
+                    // ترجمة السؤال والإجابة إلى العربية تلقائياً
+                    const translatedQ = await translateText(rawQuestion);
+                    const translatedA = await translateText(rawAnswer);
+
+                    currentAnswerAr = translatedA;
+                    document.getElementById('category-badge').innerText = `المجال: ${item.category}`;
+                    document.getElementById('question-text').innerText = translatedQ;
+
+                    isQuestionActive = true;
+                    startTimer();
+                } else {
+                    setTimeout(loadNextApiQuestion, 1000);
+                }
+            } catch (e) {
+                console.error("خطأ جلب الأسئلة:", e);
+                setTimeout(loadNextApiQuestion, 2000);
             }
+        }
 
-            document.getElementById('question-text').innerText = currentQuestionObj.question;
+        // دالة ترجمة فورية سريعة عبر API مجاني
+        async function translateText(text) {
+            try {
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|ar`);
+                const data = await res.json();
+                return data.responseData.translatedText || text;
+            } catch (e) {
+                return text;
+            }
+        }
 
-            isQuestionActive = true;
-            startTimer();
+        function decodeHTMLEntities(text) {
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = text;
+            return textarea.value;
         }
 
         function startTimer() {
@@ -510,7 +269,6 @@
 
             timerInterval = setInterval(() => {
                 timeRemaining -= 0.1;
-
                 if (timeRemaining <= 0) {
                     clearInterval(timerInterval);
                     handleTimeout();
@@ -522,17 +280,8 @@
 
         function updateTimerUI() {
             const percent = Math.max(0, (timeRemaining / questionTimeLimit) * 100);
-            const timerBar = document.getElementById('timer-bar');
-            const timerText = document.getElementById('timer-text');
-
-            timerBar.style.width = `${percent}%`;
-            timerText.innerText = `المتبقي: ${Math.ceil(timeRemaining)} ثانية`;
-
-            if (percent < 30) {
-                timerBar.style.backgroundColor = '#e53170';
-            } else {
-                timerBar.style.backgroundColor = '#ff8906';
-            }
+            document.getElementById('timer-bar').style.width = `${percent}%`;
+            document.getElementById('timer-text').innerText = `المتبقي: ${Math.ceil(timeRemaining)} ثانية`;
         }
 
         function handleTimeout() {
@@ -542,39 +291,31 @@
             const statusBox = document.getElementById('status-box');
             statusBox.className = "status-box status-timeout";
             statusBox.style.display = 'block';
-            statusBox.innerText = `⏰ انتهى الوقت! الإجابة الصحيحة: (${currentQuestionObj.correct[0]})`;
+            statusBox.innerText = `⏰ انتهى الوقت! الإجابة الصحيحة: (${currentAnswerAr})`;
 
-            setTimeout(loadNextQuestion, 3000);
+            setTimeout(loadNextApiQuestion, 3500);
         }
 
-        function connectDirectTwitchWS(channel) {
+        function connectTwitch(channel) {
             const statusEl = document.getElementById('connection-status');
             const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 
             socket.onopen = () => {
-                const nick = 'justinfan' + Math.floor(Math.random() * 80000 + 10000);
                 socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-                socket.send(`NICK ${nick}`);
+                socket.send(`NICK justinfan${Math.floor(Math.random() * 80000 + 10000)}`);
                 socket.send(`JOIN #${channel}`);
-                
-                statusEl.innerText = `🟢 متصل بشات القناة: #${channel}`;
-                statusEl.className = "connection-status status-connected";
+                statusEl.innerText = `🟢 متصل بشات تويتش: #${channel}`;
+                statusEl.style.background = "#2cb67d";
             };
 
             socket.onmessage = (event) => {
                 const raw = event.data;
-
-                if (raw.startsWith('PING')) {
-                    socket.send('PONG :tmi.twitch.tv');
-                    return;
-                }
-
+                if (raw.startsWith('PING')) socket.send('PONG :tmi.twitch.tv');
                 if (raw.includes('PRIVMSG')) {
                     let username = "متابع";
                     const nameMatch = raw.match(/display-name=([^;]+)/);
-                    if (nameMatch && nameMatch[1]) {
-                        username = nameMatch[1];
-                    } else {
+                    if (nameMatch && nameMatch[1]) username = nameMatch[1];
+                    else {
                         const userMatch = raw.match(/:(\w+)!/);
                         if (userMatch) username = userMatch[1];
                     }
@@ -585,11 +326,6 @@
                         processAnswer(username, message);
                     }
                 }
-            };
-
-            socket.onerror = () => {
-                statusEl.innerText = `🔴 خطأ في الاتصال بشات تويتش`;
-                statusEl.className = "connection-status status-connecting";
             };
         }
 
@@ -603,12 +339,12 @@
         }
 
         function processAnswer(username, userMsg) {
-            if (!isQuestionActive || !currentQuestionObj) return;
+            if (!isQuestionActive || !currentAnswerAr) return;
 
             const cleanUserMsg = normalizeText(userMsg);
-            const isCorrect = currentQuestionObj.correct.some(ans => normalizeText(ans) === cleanUserMsg);
+            const cleanCorrectMsg = normalizeText(currentAnswerAr);
 
-            if (isCorrect) {
+            if (cleanUserMsg === cleanCorrectMsg || cleanUserMsg.includes(cleanCorrectMsg)) {
                 handleCorrectAnswer(username);
             }
         }
@@ -623,45 +359,14 @@
             const statusBox = document.getElementById('status-box');
             statusBox.className = "status-box status-success";
             statusBox.style.display = 'block';
-            statusBox.innerText = `🎉 إجابة صحيحة! ${winnerUsername} نال 5 نقاط! (الإجابة: ${currentQuestionObj.correct[0]})`;
+            statusBox.innerText = `🎉 إجابة صحيحة! ${winnerUsername} نال 5 نقاط! (${currentAnswerAr})`;
 
             if (scores[winnerUsername] >= targetScore) {
                 setTimeout(() => triggerVictory(winnerUsername), 800);
                 return;
             }
 
-            setTimeout(loadNextQuestion, 3500);
-        }
-
-        function triggerVictory(winnerUsername) {
-            document.getElementById('winner-name-display').innerText = winnerUsername;
-            document.getElementById('winner-score-display').innerText = `وصل إلى ${scores[winnerUsername]} نقطة وحقق المركز الأول! 🎉`;
-            document.getElementById('winner-overlay').style.display = 'flex';
-
-            const duration = 5 * 1000;
-            const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10000 };
-
-            function randomInRange(min, max) { return Math.random() * (max - min) + min; }
-
-            const interval = setInterval(function() {
-                const timeLeft = animationEnd - Date.now();
-                if (timeLeft <= 0) return clearInterval(interval);
-
-                const particleCount = 50 * (timeLeft / duration);
-                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-            }, 250);
-        }
-
-        function resetGame() {
-            scores = {};
-            usedQuestions.clear();
-            roundQuestionCount = 0;
-            categoryIndex = 0;
-            updateLeaderboard();
-            document.getElementById('winner-overlay').style.display = 'none';
-            loadNextQuestion();
+            setTimeout(loadNextApiQuestion, 3500);
         }
 
         function updateLeaderboard() {
@@ -669,17 +374,20 @@
             leaderboardEl.innerHTML = "";
             const sortedPlayers = Object.entries(scores).sort((a, b) => b[1] - a[1]);
 
-            if (sortedPlayers.length === 0) {
-                leaderboardEl.innerHTML = '<li style="color: #94a1b2;">في انتظار الإجابات...</li>';
-                return;
-            }
-
             sortedPlayers.forEach(([player, score]) => {
                 const li = document.createElement('li');
                 li.className = 'leaderboard-item';
                 li.innerHTML = `<span>${player}</span> <span class="score">${score} نقطة</span>`;
                 leaderboardEl.appendChild(li);
             });
+        }
+
+        function triggerVictory(winnerUsername) {
+            document.getElementById('winner-name-display').innerText = winnerUsername;
+            document.getElementById('winner-score-display').innerText = `وصل إلى ${scores[winnerUsername]} نقطة وحقق المركز الأول! 🎉`;
+            document.getElementById('winner-overlay').style.display = 'flex';
+
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
         }
     </script>
 </body>
