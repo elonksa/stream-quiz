@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لعبة أسئلة الشات للبث المباشر - Twitch</title>
+    
+    <!-- 1️⃣ شفرة Google AdSense الأساسية (استبدل YOUR_CLIENT_ID برقم معرّف حسابك) -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_CLIENT_ID" crossorigin="anonymous"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -21,7 +25,7 @@
         
         .main-container { flex: 3; display: flex; flex-direction: column; gap: 20px; }
         .card { background: #16161a; padding: 25px; border-radius: 16px; border: 1px solid #242629; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .sidebar { flex: 1.1; background: #16161a; padding: 20px; border-radius: 16px; border: 1px solid #242629; height: fit-content; }
+        .sidebar { flex: 1.1; background: #16161a; padding: 20px; border-radius: 16px; border: 1px solid #242629; height: fit-content; display: flex; flex-direction: column; gap: 20px; }
         
         h2, h3 { color: #7f5af0; margin-top: 0; font-size: 24px; }
         h3 { font-size: 18px; color: #fffffe; margin-bottom: 10px; }
@@ -30,6 +34,21 @@
         input[type="text"], input[type="number"], select { background: #242629; color: #fff; border: 1px solid #72757e; width: 100%; }
         input:focus, select:focus { border-color: #7f5af0; outline: none; }
         
+        /* تنسيقات حاويات إعلانات AdSense */
+        .ads-container {
+            background: #242629;
+            border: 1px dashed #7f5af0;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            min-height: 90px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
         .categories-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -42,36 +61,21 @@
         }
 
         .category-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            background: #16161a;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #383a40;
-            transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 10px; cursor: pointer;
+            background: #16161a; padding: 10px; border-radius: 8px; border: 1px solid #383a40; transition: all 0.2s ease;
         }
-
         .category-item:hover { border-color: #7f5af0; }
         .category-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: #7f5af0; cursor: pointer; }
         .category-item span { font-size: 14px; color: #fffffe; font-weight: bold; }
 
         .btn-group { display: flex; gap: 10px; margin-bottom: 10px; }
-        .small-btn {
-            background: #242629; color: #94a1b2; padding: 6px 12px; font-size: 13px;
-            border: 1px solid #72757e; width: auto; margin: 0; cursor: pointer; border-radius: 6px;
-        }
+        .small-btn { background: #242629; color: #94a1b2; padding: 6px 12px; font-size: 13px; border: 1px solid #72757e; width: auto; margin: 0; cursor: pointer; border-radius: 6px; }
         .small-btn:hover { background: #7f5af0; color: #fff; }
 
         button { background: #7f5af0; color: #fff; cursor: pointer; font-weight: bold; width: 100%; transition: all 0.2s ease; margin-top: 10px; }
         button:hover { background: #6b46c1; transform: translateY(-2px); }
         
-        .question-box { 
-            background: #242629; padding: 35px 25px; border-radius: 14px; 
-            border: 2px solid #7f5af0; text-align: center; margin: 15px 0 10px 0; 
-            position: relative; box-shadow: inset 0 0 15px rgba(127, 90, 240, 0.2);
-        }
+        .question-box { background: #242629; padding: 35px 25px; border-radius: 14px; border: 2px solid #7f5af0; text-align: center; margin: 15px 0 10px 0; position: relative; box-shadow: inset 0 0 15px rgba(127, 90, 240, 0.2); }
         .question-title { font-size: 28px; font-weight: bold; color: #fffffe; margin: 0; line-height: 1.5; }
         
         .timer-container { width: 100%; background-color: #0f0e17; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 15px; border: 1px solid #72757e; }
@@ -95,18 +99,8 @@
         .status-connecting { background: #ff8906; color: #000; }
         .status-connected { background: #2cb67d; color: #000; }
 
-        .winner-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(15, 14, 23, 0.94); backdrop-filter: blur(8px);
-            display: none; justify-content: center; align-items: center; z-index: 9999; flex-direction: column;
-        }
-
-        .winner-card {
-            background: linear-gradient(135deg, #16161a 0%, #242629 100%);
-            border: 3px solid #ff8906; box-shadow: 0 0 50px rgba(255, 137, 6, 0.4);
-            border-radius: 20px; padding: 40px; text-align: center; max-width: 500px; width: 90%;
-        }
-
+        .winner-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 14, 23, 0.94); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; }
+        .winner-card { background: linear-gradient(135deg, #16161a 0%, #242629 100%); border: 3px solid #ff8906; box-shadow: 0 0 50px rgba(255, 137, 6, 0.4); border-radius: 20px; padding: 40px; text-align: center; max-width: 500px; width: 90%; }
         .winner-title { font-size: 36px; color: #ff8906; margin-bottom: 10px; font-weight: 900; }
         .winner-name { font-size: 42px; color: #2cb67d; font-weight: bold; margin: 15px 0; }
         .winner-score { font-size: 22px; color: #fffffe; margin-bottom: 25px; }
@@ -116,6 +110,17 @@
 <body>
 
     <div class="main-container">
+        <!-- 📢 المساحة الإعلانية العلوية (Top Banner Ad) -->
+        <div class="ads-container">
+            <ins class="adsbygoogle"
+                 style="display:block; width:100%;"
+                 data-ad-client="ca-pub-YOUR_CLIENT_ID"
+                 data-ad-slot="YOUR_SLOT_ID_1"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        </div>
+
         <div id="setup-card" class="card">
             <h2>⚙️ إعدادات اللعبة</h2>
             
@@ -201,10 +206,23 @@
     </div>
 
     <div class="sidebar">
-        <h2>🏆 المتصدرون</h2>
-        <ul id="leaderboard" class="leaderboard-list">
-            <li style="color: #94a1b2;">في انتظار الإجابات...</li>
-        </ul>
+        <div>
+            <h2>🏆 المتصدرون</h2>
+            <ul id="leaderboard" class="leaderboard-list">
+                <li style="color: #94a1b2;">في انتظار الإجابات...</li>
+            </ul>
+        </div>
+
+        <!-- 📢 المساحة الإعلانية الجانبية (Sidebar Ad) -->
+        <div class="ads-container" style="min-height: 250px;">
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-YOUR_CLIENT_ID"
+                 data-ad-slot="YOUR_SLOT_ID_2"
+                 data-ad-format="rectangle"
+                 data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        </div>
     </div>
 
     <div id="winner-overlay" class="winner-overlay">
@@ -277,9 +295,7 @@
         const POINTS_PER_ANSWER = 5;
 
         function toggleAllCategories(selectAll) {
-            document.querySelectorAll('.category-checkbox').forEach(cb => {
-                cb.checked = selectAll;
-            });
+            document.querySelectorAll('.category-checkbox').forEach(cb => { cb.checked = selectAll; });
         }
 
         document.getElementById('start-btn').addEventListener('click', () => {
@@ -289,15 +305,8 @@
             selectedDifficultyMode = document.getElementById('difficulty-select').value;
             activeCategories = Array.from(document.querySelectorAll('.category-checkbox:checked')).map(cb => cb.value);
 
-            if (!channelName) {
-                alert("يرجى إدخال اسم قناة تويتش!");
-                return;
-            }
-
-            if (activeCategories.length === 0) {
-                alert("يرجى اختيار مجال واحد على الأقل لتبدأ اللعبة!");
-                return;
-            }
+            if (!channelName) { alert("يرجى إدخال اسم قناة تويتش!"); return; }
+            if (activeCategories.length === 0) { alert("يرجى اختيار مجال واحد على الأقل لتبدأ اللعبة!"); return; }
 
             document.getElementById('target-display').innerText = `هدف الفوز: ${targetScore} نقطة`;
             document.getElementById('setup-card').style.display = 'none';
